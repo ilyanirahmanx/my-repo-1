@@ -1,0 +1,2258 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MISI TERIMA KASIH – SCHOOL RUN! | Pendidikan Moral Tahun 3</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Fonts: Fredoka & Lexend untuk bacaan mesra murid Tahun 3 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Three.js untuk Persekitaran 3D Sekolah -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <!-- GSAP untuk Animasi UI & Kesan Visual -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+    <!-- Tone.js / Web Audio API untuk Muzik Original & Kesan Bunyi -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+    <style>
+        body {
+            font-family: 'Lexend', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #38BDF8;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+
+        .font-display {
+            font-family: 'Fredoka', sans-serif;
+        }
+
+        #canvas-container {
+            position: fixed;
+            inset: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+        }
+
+        /* Butang Gaya Permainan Arked 3D */
+        .btn-amber {
+            box-shadow: 0 5px 0 #B45309;
+            transition: all 0.1s ease;
+        }
+        .btn-amber:active {
+            transform: translateY(4px);
+            box-shadow: 0 1px 0 #B45309;
+        }
+
+        .btn-emerald {
+            box-shadow: 0 5px 0 #047857;
+            transition: all 0.1s ease;
+        }
+        .btn-emerald:active {
+            transform: translateY(4px);
+            box-shadow: 0 1px 0 #047857;
+        }
+
+        .btn-blue {
+            box-shadow: 0 5px 0 #1D4ED8;
+            transition: all 0.1s ease;
+        }
+        .btn-blue:active {
+            transform: translateY(4px);
+            box-shadow: 0 1px 0 #1D4ED8;
+        }
+
+        .btn-rose {
+            box-shadow: 0 5px 0 #BE123C;
+            transition: all 0.1s ease;
+        }
+        .btn-rose:active {
+            transform: translateY(4px);
+            box-shadow: 0 1px 0 #BE123C;
+        }
+
+        /* Kesan Denyutan Amaran Nyawa Rendah */
+        @keyframes lowLifePulse {
+            0%, 100% { box-shadow: inset 0 0 0px rgba(239, 68, 68, 0); }
+            50% { box-shadow: inset 0 0 45px rgba(239, 68, 68, 0.55); }
+        }
+        .low-life-vignette {
+            animation: lowLifePulse 1.2s infinite;
+        }
+
+        /* Cetakan Sijil */
+        @media print {
+            body * { visibility: hidden; }
+            #print-cert-area, #print-cert-area * { visibility: visible; }
+            #print-cert-area {
+                position: fixed;
+                inset: 0;
+                width: 100%;
+                height: 100%;
+                background: #FFFBEB !important;
+                border: 8px double #2563EB !important;
+                padding: 24px;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- KANVAS 3D THREE.JS -->
+    <div id="canvas-container"></div>
+
+    <!-- KANVAS KONFETI KEMENANGAN -->
+    <canvas id="confetti-canvas" class="fixed inset-0 z-40 pointer-events-none"></canvas>
+
+    <!-- VIGNETTE AMARAN NYAWA RENDAH -->
+    <div id="danger-vignette" class="hidden fixed inset-0 z-10 pointer-events-none low-life-vignette"></div>
+
+    <!-- ==================== HUD SEMASA BERMAIN ==================== -->
+    <header id="game-hud" class="hidden fixed top-0 left-0 right-0 z-20 p-2 sm:p-3.5 pointer-events-none">
+        <div class="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-2">
+            
+            <!-- Kiri: Jarak, Rekod Tertinggi & Power-Up Aktif -->
+            <div class="flex items-center gap-2 bg-indigo-950/90 backdrop-blur-md text-white px-3 py-2 rounded-2xl border-2 border-amber-400 shadow-lg">
+                <span class="text-xl sm:text-2xl">🏫</span>
+                <div>
+                    <div class="text-xs sm:text-sm font-bold text-sky-300">
+                        Jarak: <span id="hud-distance" class="font-display text-white">0</span> m
+                    </div>
+                    <div class="text-[10px] sm:text-xs text-amber-300 font-semibold">
+                        Rekod: <span id="hud-high-distance">0</span> m
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tengah: Kad, Markah, Kombo & Nyawa -->
+            <div class="flex items-center gap-2 sm:gap-3 bg-indigo-950/90 backdrop-blur-md text-white px-3 py-2 rounded-2xl border-2 border-amber-400 shadow-lg">
+                <div class="text-center px-1">
+                    <span class="block text-[10px] uppercase text-emerald-300 font-bold">Kad</span>
+                    <span id="hud-cards" class="font-display text-sm sm:text-lg font-bold text-emerald-400">0/12</span>
+                </div>
+                <div class="h-7 w-px bg-indigo-700"></div>
+                <div class="text-center px-1">
+                    <span class="block text-[10px] uppercase text-amber-300 font-bold">Markah</span>
+                    <span id="hud-score" class="font-display text-sm sm:text-lg font-bold text-amber-400">0</span>
+                </div>
+                <div class="h-7 w-px bg-indigo-700"></div>
+                <div class="text-center px-1">
+                    <span class="block text-[10px] uppercase text-purple-300 font-bold">Kombo</span>
+                    <span id="hud-combo" class="font-display text-sm sm:text-lg font-bold text-purple-300">0/5</span>
+                </div>
+                <div class="h-7 w-px bg-indigo-700"></div>
+                <div class="text-center px-1">
+                    <span class="block text-[10px] uppercase text-rose-300 font-bold">Nyawa</span>
+                    <div id="hud-lives" class="text-xs sm:text-base tracking-tighter">❤️❤️❤️</div>
+                </div>
+            </div>
+
+            <!-- Kanan: Butang Muzik, Kesan Bunyi & Jeda -->
+            <div class="flex items-center gap-1.5 sm:gap-2 pointer-events-auto">
+                <button id="hud-btn-music" onclick="toggleMusic()" title="Muzik Latar" class="bg-amber-400 hover:bg-amber-300 text-indigo-950 w-9 h-9 sm:w-10 sm:h-10 rounded-xl font-bold shadow-lg flex items-center justify-center text-base sm:text-lg cursor-pointer">
+                    🎵
+                </button>
+                <button id="hud-btn-sfx" onclick="toggleSfx()" title="Kesan Bunyi" class="bg-sky-400 hover:bg-sky-300 text-indigo-950 w-9 h-9 sm:w-10 sm:h-10 rounded-xl font-bold shadow-lg flex items-center justify-center text-base sm:text-lg cursor-pointer">
+                    🔊
+                </button>
+                <button onclick="pauseGame()" title="Jeda Permainan" class="bg-rose-500 hover:bg-rose-400 text-white w-9 h-9 sm:w-10 sm:h-10 rounded-xl font-bold shadow-lg flex items-center justify-center text-base sm:text-lg cursor-pointer">
+                    ⏸️
+                </button>
+            </div>
+        </div>
+
+        <!-- Bar Status Power-Up Aktif -->
+        <div id="powerup-status-bar" class="max-w-md mx-auto mt-2 flex justify-center gap-2 flex-wrap"></div>
+
+        <!-- Mini-Radar Peta Labyrinth (Khusus untuk Mod Maze Runner Real) -->
+        <div id="maze-radar-container" class="hidden fixed top-20 right-3 sm:right-5 z-20 bg-stone-950/85 p-2 rounded-2xl border-2 border-amber-500 shadow-2xl">
+            <div class="text-[10px] font-display font-bold text-amber-400 text-center uppercase tracking-wider mb-1">
+                🧭 RADAR LABYRINTH
+            </div>
+            <canvas id="maze-radar-canvas" width="120" height="120" class="rounded-xl bg-stone-900 block"></canvas>
+        </div>
+    </header>
+
+    <!-- ==================== SEPANDUK SUPER COMBO ==================== -->
+    <div id="super-combo-banner" class="hidden fixed top-20 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
+        <div class="bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 text-indigo-950 font-display font-bold text-base sm:text-2xl px-5 py-1.5 rounded-full border-4 border-rose-600 shadow-2xl animate-bounce">
+            🔥 SUPER COMBO 2X MARKAH! 🔥
+        </div>
+    </div>
+
+    <!-- ==================== NOTIFIKASI MESEJ PEMBELAJARAN ==================== -->
+    <div id="learning-toast" class="hidden fixed top-24 sm:top-28 left-1/2 -translate-x-1/2 z-20 pointer-events-none w-11/12 max-w-lg">
+        <div class="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 text-white px-4 py-3 rounded-2xl border-3 border-amber-300 shadow-2xl flex items-center gap-3">
+            <div class="bg-amber-300 text-indigo-950 w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0 font-bold shadow">
+                🌟
+            </div>
+            <div class="text-left">
+                <span id="toast-role" class="inline-block bg-indigo-950/70 text-amber-300 text-[10px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full uppercase mb-0.5">
+                    WARGA SEKOLAH: GURU
+                </span>
+                <p id="toast-message" class="font-display text-xs sm:text-sm md:text-base font-semibold leading-snug">
+                    HEBAT! Mengucapkan terima kasih kepada guru menunjukkan kita menghargai ilmu yang diberikan.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== BUTANG SENTUHAN ON-SCREEN (TABLET / MOBILE) ==================== -->
+    <div id="touch-controls" class="hidden fixed bottom-4 left-4 right-4 z-20 flex justify-between items-end pointer-events-none opacity-85 hover:opacity-100">
+        <div class="flex gap-2 pointer-events-auto">
+            <button onpointerdown="setTouchDir('LEFT', true)" onpointerup="setTouchDir('LEFT', false)" onpointerleave="setTouchDir('LEFT', false)" onclick="moveLeft()" aria-label="Lorong Kiri" class="w-14 h-14 bg-white/90 active:bg-amber-300 text-indigo-950 rounded-2xl border-2 border-indigo-950 shadow-lg font-display text-2xl font-bold flex items-center justify-center">
+                ⬅️
+            </button>
+            <button onpointerdown="setTouchDir('RIGHT', true)" onpointerup="setTouchDir('RIGHT', false)" onpointerleave="setTouchDir('RIGHT', false)" onclick="moveRight()" aria-label="Lorong Kanan" class="w-14 h-14 bg-white/90 active:bg-amber-300 text-indigo-950 rounded-2xl border-2 border-indigo-950 shadow-lg font-display text-2xl font-bold flex items-center justify-center">
+                ➡️
+            </button>
+        </div>
+        <div class="flex gap-2 pointer-events-auto">
+            <button onpointerdown="setTouchDir('DOWN', true)" onpointerup="setTouchDir('DOWN', false)" onpointerleave="setTouchDir('DOWN', false)" onclick="slideDown()" aria-label="Menunduk" class="w-14 h-14 bg-white/90 active:bg-amber-300 text-indigo-950 rounded-2xl border-2 border-indigo-950 shadow-lg font-display text-2xl font-bold flex items-center justify-center">
+                ⬇️
+            </button>
+            <button onpointerdown="setTouchDir('UP', true)" onpointerup="setTouchDir('UP', false)" onpointerleave="setTouchDir('UP', false)" onclick="jumpUp()" aria-label="Melompat" class="w-14 h-14 bg-amber-400/95 active:bg-amber-300 text-indigo-950 rounded-2xl border-2 border-indigo-950 shadow-lg font-display text-2xl font-bold flex items-center justify-center">
+                ⬆️
+            </button>
+        </div>
+    </div>
+
+    <!-- ==================== 1. MENU UTAMA (START SCREEN) ==================== -->
+    <div id="main-menu-screen" class="fixed inset-0 z-40 bg-gradient-to-b from-sky-900/70 via-indigo-950/80 to-indigo-950/95 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-amber-50 rounded-3xl max-w-xl w-full p-6 sm:p-8 border-4 border-amber-400 shadow-2xl text-center my-auto relative">
+            
+            <div class="inline-flex items-center gap-2 bg-blue-600 text-white font-display font-bold text-xs sm:text-sm px-4 py-1 rounded-full mb-3 shadow">
+                <span>📚 PENDIDIKAN MORAL TAHUN 3</span>
+                <span>•</span>
+                <span>KSSR</span>
+            </div>
+
+            <!-- Logo Tajuk Permainan -->
+            <h1 class="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-indigo-950 leading-tight mb-1">
+                MISI TERIMA KASIH
+            </h1>
+            <div class="inline-block bg-amber-400 text-indigo-950 font-display font-bold text-lg sm:text-2xl px-5 py-1 rounded-2xl border-2 border-indigo-950 shadow-sm mb-3">
+                🏃‍♂️ SCHOOL RUN & MAZE! 🏫
+            </div>
+
+            <p class="text-slate-600 text-xs sm:text-sm font-medium mb-3">
+                Pilih mod permainan kegemaran kamu! Jawab <b>10 Soalan Aneka Pilihan</b> amalan berterima kasih kepada warga sekolah untuk menang!
+            </p>
+
+            <!-- Input Nama Murid -->
+            <div class="bg-white p-3 rounded-2xl border-2 border-amber-300 mb-3 text-left">
+                <label for="player-name-input" class="block font-display font-bold text-indigo-950 text-xs sm:text-sm mb-1">
+                    ✏️ Nama Murid (Untuk Sijil Jaguh Terima Kasih):
+                </label>
+                <input type="text" id="player-name-input" maxlength="32" placeholder="Masukkan nama kamu di sini..."
+                    class="w-full px-3.5 py-2 rounded-xl border-2 border-slate-200 focus:border-blue-500 focus:outline-none font-medium text-indigo-950 text-sm sm:text-base">
+            </div>
+
+            <!-- Pilihan Mod Permainan -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-3">
+                <button onclick="selectAndStartMode('RUNNER')" class="p-3 bg-emerald-500 hover:bg-emerald-400 text-white rounded-2xl btn-emerald text-left flex items-center gap-3 cursor-pointer border-2 border-emerald-700">
+                    <span class="text-3xl bg-white/20 p-2 rounded-xl">🛹</span>
+                    <div>
+                        <span class="font-display font-bold text-base sm:text-lg block leading-tight">SCHOOL RUN 3D</span>
+                        <span class="text-[11px] text-emerald-100 block">Gaya Subway Surf, Bas Sekolah & Hoverboard!</span>
+                    </div>
+                </button>
+                <button onclick="selectAndStartMode('MAZE')" class="p-3 bg-stone-800 hover:bg-stone-700 text-amber-300 rounded-2xl shadow-[0_5px_0_#1C1917] active:translate-y-1 transition-all text-left flex items-center gap-3 cursor-pointer border-2 border-amber-500">
+                    <span class="text-3xl bg-amber-500/20 p-2 rounded-xl">🏛️</span>
+                    <div>
+                        <span class="font-display font-bold text-base sm:text-lg block leading-tight text-white">THE MAZE RUNNER</span>
+                        <span class="text-[11px] text-amber-200 block">Labyrinth Batu Purba, Obor Api & Radar Peta!</span>
+                    </div>
+                </button>
+            </div>
+
+            <!-- Rekod Jarak Tertinggi -->
+            <div class="bg-indigo-100 border border-indigo-300 rounded-xl py-1 px-3 mb-3 inline-block text-xs font-bold text-indigo-950">
+                🏆 Rekod Jarak Tertinggi: <span id="menu-high-score">0</span> meter
+            </div>
+
+            <!-- Butang Sekunder -->
+            <div class="grid grid-cols-2 gap-2.5">
+                <button onclick="openHowToPlay()" class="py-2.5 px-4 bg-blue-600 hover:bg-blue-500 text-white font-display font-bold text-sm sm:text-base rounded-2xl btn-blue cursor-pointer">
+                    📖 CARA BERMAIN
+                </button>
+                <button onclick="openAudioSettings()" class="py-2.5 px-4 bg-amber-400 hover:bg-amber-300 text-indigo-950 font-display font-bold text-sm sm:text-base rounded-2xl btn-amber cursor-pointer">
+                    🎚️ TETAPAN AUDIO
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL SOALAN ANEKA PILIHAN (MCQ QUIZ) ==================== -->
+    <div id="mcq-modal" class="hidden fixed inset-0 z-50 bg-indigo-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div id="mcq-card" class="bg-white rounded-3xl max-w-xl w-full p-5 sm:p-7 border-4 border-amber-400 shadow-2xl text-center">
+            <div class="flex items-center justify-between mb-2">
+                <span id="mcq-category-badge" class="bg-blue-600 text-white font-display font-bold text-xs px-3 py-1 rounded-full uppercase">
+                    💌 SOALAN WARGA SEKOLAH
+                </span>
+                <span class="bg-amber-100 text-amber-900 font-display font-bold text-xs px-3 py-1 rounded-full border border-amber-300">
+                    +20 Markah
+                </span>
+            </div>
+
+            <h3 id="mcq-question-text" class="font-display text-lg sm:text-xl font-bold text-indigo-950 mb-4 leading-snug text-left bg-sky-50 p-3.5 rounded-2xl border-2 border-sky-200">
+                Soalan dipaparkan di sini...
+            </h3>
+
+            <!-- 4 Pilihan Jawapan (A, B, C, D) -->
+            <div id="mcq-options-grid" class="grid grid-cols-1 gap-2.5 mb-3 text-left">
+                <!-- Dijana secara dinamik -->
+            </div>
+
+            <!-- Maklum Balas Jawapan -->
+            <div id="mcq-feedback-box" class="hidden rounded-2xl p-3 text-xs sm:text-sm font-semibold mt-2 text-left"></div>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL CARA BERMAIN ==================== -->
+    <div id="howto-modal" class="hidden fixed inset-0 z-50 bg-indigo-950/85 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-3xl max-w-2xl w-full p-5 sm:p-7 border-4 border-amber-400 shadow-2xl my-auto max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b-2 border-slate-100 pb-3 mb-4">
+                <h2 class="font-display text-xl sm:text-2xl font-bold text-indigo-950">
+                    📖 Cara Bermain & Panduan Item
+                </h2>
+                <button onclick="closeHowToPlay()" class="bg-rose-500 hover:bg-rose-400 text-white w-9 h-9 rounded-full font-bold cursor-pointer">✕</button>
+            </div>
+
+            <div class="space-y-4 text-xs sm:text-sm text-slate-700">
+                <!-- Kawalan -->
+                <div class="bg-sky-50 p-3.5 rounded-2xl border border-sky-200">
+                    <h3 class="font-display font-bold text-indigo-950 text-sm sm:text-base mb-2">🎮 Kawalan Watak (Papan Kekunci & Sentuhan)</h3>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                        <div class="bg-white p-2 rounded-xl border border-sky-200">
+                            <span class="text-lg block">⬅️ ➡️</span>
+                            <b>Kiri / Kanan</b><br>Tukar Lorong
+                        </div>
+                        <div class="bg-white p-2 rounded-xl border border-sky-200">
+                            <span class="text-lg block">⬆️</span>
+                            <b>Atas / Swipe</b><br>Melompat
+                        </div>
+                        <div class="bg-white p-2 rounded-xl border border-sky-200">
+                            <span class="text-lg block">⬇️</span>
+                            <b>Bawah / Swipe</b><br>Menunduk
+                        </div>
+                        <div class="bg-white p-2 rounded-xl border border-sky-200">
+                            <span class="text-lg block">⏸️</span>
+                            <b>Butang Jeda</b><br>Rehat Sebentar
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Item Kutipan -->
+                <div class="bg-amber-50 p-3.5 rounded-2xl border border-amber-200">
+                    <h3 class="font-display font-bold text-indigo-950 text-sm sm:text-base mb-2">✨ Item Kutipan & Power-Up</h3>
+                    <ul class="space-y-1.5">
+                        <li>💌 <b>Kad Penghargaan (+10 Markah):</b> Kutip 12 kad cara berterima kasih kepada Guru, Pekerja Kebersihan, Pengawal Keselamatan & Pekerja Kantin untuk menang!</li>
+                        <li>⭐ <b>Bintang Emas (+5 Markah):</b> Item bonus tambahan markah.</li>
+                        <li>🧲 <b>Magnet Bintang:</b> Menarik semua bintang emas berdekatan secara automatik.</li>
+                        <li>🛡️ <b>Perisai Keselamatan:</b> Melindungi murid daripada melanggar halangan buat sementara.</li>
+                        <li>⚡ <b>Boost Kelajuan:</b> Larian pantas tanpa melanggar halangan + bonus markah!</li>
+                        <li>❤️ <b>Hati Tambahan:</b> Memulihkan 1 nyawa jika nyawa kurang daripada 3.</li>
+                    </ul>
+                </div>
+
+                <!-- Halangan -->
+                <div class="bg-rose-50 p-3.5 rounded-2xl border border-rose-200">
+                    <h3 class="font-display font-bold text-indigo-950 text-sm sm:text-base mb-1">🚧 Elakkan Halangan Sekolah</h3>
+                    <p>Lompat melepasi <b>Kon Keselamatan, Kotak & Tong Sampah</b>, atau tunduk di bawah <b>Papan Tanda & Penghadang Tinggi</b>!</p>
+                </div>
+            </div>
+
+            <button onclick="closeHowToPlay()" class="mt-5 w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-white font-display font-bold text-base rounded-2xl btn-emerald cursor-pointer">
+                FAHAM! MARI BERMAIN 🚀
+            </button>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL TETAPAN AUDIO ==================== -->
+    <div id="audio-modal" class="hidden fixed inset-0 z-50 bg-indigo-950/85 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 border-4 border-amber-400 shadow-2xl">
+            <div class="flex items-center justify-between border-b-2 border-slate-100 pb-3 mb-4">
+                <h2 class="font-display text-xl sm:text-2xl font-bold text-indigo-950">
+                    🎚️ Tetapan Muzik & Bunyi
+                </h2>
+                <button onclick="closeAudioSettings()" class="bg-rose-500 hover:bg-rose-400 text-white w-9 h-9 rounded-full font-bold cursor-pointer">✕</button>
+            </div>
+
+            <div class="space-y-4">
+                <!-- Kawalan Muzik Latar -->
+                <div class="bg-amber-50 p-4 rounded-2xl border border-amber-200">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="font-display font-bold text-indigo-950">🎵 Muzik Latar</span>
+                        <button id="modal-music-toggle" onclick="toggleMusic()" class="px-3.5 py-1 rounded-xl font-bold text-xs bg-emerald-500 text-white cursor-pointer">
+                            ON
+                        </button>
+                    </div>
+                    <input type="range" id="music-volume-slider" min="0" max="100" value="75" oninput="updateMusicVolume(this.value)"
+                        class="w-full accent-amber-500 cursor-pointer">
+                </div>
+
+                <!-- Kawalan Kesan Bunyi -->
+                <div class="bg-sky-50 p-4 rounded-2xl border border-sky-200">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="font-display font-bold text-indigo-950">🔊 Kesan Bunyi (SFX)</span>
+                        <button id="modal-sfx-toggle" onclick="toggleSfx()" class="px-3.5 py-1 rounded-xl font-bold text-xs bg-emerald-500 text-white cursor-pointer">
+                            ON
+                        </button>
+                    </div>
+                    <input type="range" id="sfx-volume-slider" min="0" max="100" value="85" oninput="updateSfxVolume(this.value)"
+                        class="w-full accent-blue-600 cursor-pointer">
+                </div>
+            </div>
+
+            <button onclick="testAudioPreview()" class="mt-4 w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-display font-bold text-sm rounded-xl btn-blue cursor-pointer">
+                🎶 UJI BUNYI & MUZIK
+            </button>
+            <button onclick="closeAudioSettings()" class="mt-2.5 w-full py-3 bg-amber-400 hover:bg-amber-300 text-indigo-950 font-display font-bold text-base rounded-2xl btn-amber cursor-pointer">
+                SIMPAN & TUTUP
+            </button>
+        </div>
+    </div>
+
+    <!-- ==================== SKRIN JEDA (PAUSE SCREEN) ==================== -->
+    <div id="pause-screen" class="hidden fixed inset-0 z-50 bg-indigo-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 border-4 border-amber-400 shadow-2xl text-center">
+            <div class="text-5xl mb-2">⏸️</div>
+            <h2 class="font-display text-2xl sm:text-3xl font-bold text-indigo-950 mb-2">
+                PERMAINAN DIJEDA
+            </h2>
+            <p class="text-slate-600 text-sm mb-5">
+                Tarik nafas sebentar sebelum meneruskan misi berterima kasih!
+            </p>
+            <div class="space-y-2.5">
+                <button onclick="resumeGame()" class="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-white font-display font-bold text-lg rounded-2xl btn-emerald cursor-pointer">
+                    ▶️ SAMBUNG BERMAIN
+                </button>
+                <button onclick="openAudioSettings()" class="w-full py-2.5 bg-amber-400 hover:bg-amber-300 text-indigo-950 font-display font-bold text-base rounded-2xl btn-amber cursor-pointer">
+                    🎚️ TETAPAN AUDIO
+                </button>
+                <button onclick="returnToMainMenu()" class="w-full py-2.5 bg-rose-500 hover:bg-rose-400 text-white font-display font-bold text-base rounded-2xl btn-rose cursor-pointer">
+                    🏠 MENU UTAMA
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== SKRIN GAME OVER ==================== -->
+    <div id="gameover-screen" class="hidden fixed inset-0 z-50 bg-indigo-950/90 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 border-4 border-rose-400 shadow-2xl text-center">
+            <div class="text-5xl mb-2">💪</div>
+            <h2 class="font-display text-2xl sm:text-3xl font-bold text-rose-600 mb-1">
+                TAMAT PERMAINAN!
+            </h2>
+            <p class="text-slate-600 text-xs sm:text-sm mb-4 font-medium">
+                Jangan putus asa! Teruskan usaha menghargai jasa warga sekolah kita.
+            </p>
+
+            <div class="grid grid-cols-3 gap-2 mb-5">
+                <div class="bg-blue-50 border border-blue-200 rounded-2xl p-2.5">
+                    <span class="block text-[10px] font-bold text-blue-800 uppercase">Markah</span>
+                    <span id="go-score" class="font-display text-xl font-bold text-blue-950">0</span>
+                </div>
+                <div class="bg-amber-50 border border-amber-200 rounded-2xl p-2.5">
+                    <span class="block text-[10px] font-bold text-amber-800 uppercase">Jarak</span>
+                    <span id="go-distance" class="font-display text-xl font-bold text-amber-950">0 m</span>
+                </div>
+                <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-2.5">
+                    <span class="block text-[10px] font-bold text-emerald-800 uppercase">Kad</span>
+                    <span id="go-cards" class="font-display text-xl font-bold text-emerald-950">0/12</span>
+                </div>
+            </div>
+
+            <div class="space-y-2.5">
+                <button onclick="startGame()" class="w-full py-3.5 bg-amber-500 hover:bg-amber-400 text-indigo-950 font-display font-bold text-lg rounded-2xl btn-amber cursor-pointer">
+                    🔄 MAIN SEMULA
+                </button>
+                <button onclick="returnToMainMenu()" class="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-display font-bold text-base rounded-2xl btn-blue cursor-pointer">
+                    🏠 MENU UTAMA
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== SKRIN KEMENANGAN & SIJIL DIGITAL ==================== -->
+    <div id="victory-screen" class="hidden fixed inset-0 z-50 bg-indigo-950/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+        <div class="max-w-2xl w-full my-auto">
+            
+            <div id="print-cert-area" class="bg-amber-50 rounded-3xl p-5 sm:p-8 border-8 border-double border-blue-600 shadow-2xl text-center relative">
+                <div class="inline-block bg-emerald-500 text-white font-display font-bold text-xs sm:text-sm px-4 py-1 rounded-full mb-2 shadow">
+                    🏆 SIJIL PENGHARGAAN PENDIDIKAN MORAL TAHUN 3
+                </div>
+
+                <h2 class="font-display text-2xl sm:text-4xl font-bold text-indigo-950 mb-1">
+                    TAHNIAH, JAGUH TERIMA KASIH!
+                </h2>
+                <p class="text-xs sm:text-sm text-slate-600 font-medium mb-3">
+                    Dianugerahkan kepada murid cemerlang atas kejayaan menamatkan misi menghargai warga sekolah:
+                </p>
+
+                <div class="bg-white border-b-4 border-amber-400 rounded-2xl py-2 px-4 mb-4 max-w-md mx-auto shadow-xs">
+                    <p id="win-player-name" class="font-display text-xl sm:text-2xl font-bold text-blue-700 uppercase">
+                        MURID TAHUN 3
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-3 gap-2 sm:gap-3 mb-4 max-w-lg mx-auto">
+                    <div class="bg-blue-100 border-2 border-blue-300 rounded-2xl p-2.5">
+                        <span class="block text-[10px] sm:text-xs font-bold text-blue-800 uppercase">Jumlah Markah</span>
+                        <span id="win-score" class="font-display text-xl sm:text-2xl font-bold text-blue-950">0</span>
+                    </div>
+                    <div class="bg-emerald-100 border-2 border-emerald-300 rounded-2xl p-2.5">
+                        <span class="block text-[10px] sm:text-xs font-bold text-emerald-800 uppercase">Kad Dikutip</span>
+                        <span id="win-cards" class="font-display text-xl sm:text-2xl font-bold text-emerald-950">12/12</span>
+                    </div>
+                    <div class="bg-amber-100 border-2 border-amber-300 rounded-2xl p-2.5">
+                        <span class="block text-[10px] sm:text-xs font-bold text-amber-800 uppercase">Jarak Larian</span>
+                        <span id="win-distance" class="font-display text-xl sm:text-2xl font-bold text-amber-950">0 m</span>
+                    </div>
+                </div>
+
+                <!-- Rumusan Kad Amalan Terima Kasih yang Dikutip -->
+                <div class="bg-white/95 rounded-2xl p-3 border border-amber-200 text-left max-h-36 overflow-y-auto">
+                    <p class="font-display font-bold text-xs text-indigo-950 uppercase mb-1.5">
+                        📋 Senarai Amalan Berterima Kasih yang Dikuasai:
+                    </p>
+                    <ul id="win-summary-list" class="text-xs text-slate-700 space-y-1 list-disc pl-4 font-medium"></ul>
+                </div>
+            </div>
+
+            <!-- Butang Kawalan Kemenangan -->
+            <div class="no-print grid grid-cols-1 sm:grid-cols-3 gap-2.5 mt-4">
+                <button onclick="startGame()" class="py-3 px-4 bg-amber-500 hover:bg-amber-400 text-indigo-950 font-display font-bold text-base rounded-2xl btn-amber cursor-pointer">
+                    🔄 MAIN SEMULA
+                </button>
+                <button onclick="returnToMainMenu()" class="py-3 px-4 bg-blue-600 hover:bg-blue-500 text-white font-display font-bold text-base rounded-2xl btn-blue cursor-pointer">
+                    🏠 MENU UTAMA
+                </button>
+                <button onclick="window.print()" class="py-3 px-4 bg-emerald-500 hover:bg-emerald-400 text-white font-display font-bold text-base rounded-2xl btn-emerald cursor-pointer">
+                    🖨️ CETAK SIJIL
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== SKRIP UTAMA PERMAINAN & ENJIN 3D + AUDIO ==================== -->
+    <script>
+        /**
+         * 1. BANK SOALAN ANEKA PILIHAN PENDIDIKAN MORAL TAHUN 3 (KSSR)
+         * Fokus: Cara berterima kasih kepada warga sekolah (Guru, Pekerja Kebersihan, Pengawal Keselamatan, Pekerja Kantin)
+         */
+        const MCQ_BANK = [
+            {
+                role: 'GURU',
+                question: 'Cikgu Aminah telah membantu kamu memahami topik Matematik yang sukar. Apakah cara terbaik untuk berterima kasih?',
+                options: [
+                    'A. Mengucapkan "Terima kasih, cikgu" dengan sopan dan senyuman.',
+                    'B. Terus keluar dari kelas tanpa berkata apa-apa.',
+                    'C. Bermain pensel semasa cikgu sedang menerangkan.',
+                    'D. Menyuruh kawan mengucapkan terima kasih bagi pihak kamu.'
+                ],
+                correctIndex: 0,
+                explanation: 'HEBAT! Mengucapkan terima kasih secara langsung dengan sopan menunjukkan kita menghargai ilmu dan masa guru.'
+            },
+            {
+                role: 'PEKERJA KEBERSIHAN',
+                question: 'Pak Cik Rahman sedang menyapu daun kering di halaman sekolah. Bagaimanakah kamu menunjukkan penghargaan kepadanya?',
+                options: [
+                    'A. Membuang pembalut gula-gula di hadapannya.',
+                    'B. Membuang sampah ke dalam tong sampah dan mengucapkan terima kasih.',
+                    'C. Berlari di atas longgokan daun yang baru disapu.',
+                    'D. Membuat bising dan mengejeknya.'
+                ],
+                correctIndex: 1,
+                explanation: 'SYABAS! Menjaga kebersihan sekolah dan mengucapkan terima kasih meringankan tugas pekerja kebersihan.'
+            },
+            {
+                role: 'PENGAWAL KESELAMATAN',
+                question: 'Pengawal keselamatan membantu memimpin kamu melintas jalan di hadapan pagar sekolah. Apakah tindakan kamu?',
+                options: [
+                    'A. Berlari melintas tanpa melihat kereta.',
+                    'B. Memarahi pengawal kerana menyuruh kamu berhenti.',
+                    'C. Memberikan senyuman, salam dan mengucapkan terima kasih.',
+                    'D. Bermain kejar-kejar di pondok pengawal.'
+                ],
+                correctIndex: 2,
+                explanation: 'TAHNIAH! Memberikan salam dan ucapan terima kasih menunjukkan sikap hormat terhadap pengawal keselamatan.'
+            },
+            {
+                role: 'PEKERJA KANTIN',
+                question: 'Selepas membeli nasi lemak di kantin sekolah, apakah amalan berterima kasih yang patut kamu lakukan?',
+                options: [
+                    'A. Meninggalkan pinggan kotor di atas meja makan.',
+                    'B. Memotong barisan murid lain semasa membayar.',
+                    'C. Mengucapkan terima kasih dan meletakkan pinggan ke dalam besen.',
+                    'D. Merungut tentang harga makanan dengan kuat.'
+                ],
+                correctIndex: 2,
+                explanation: 'TERBAIK! Ucapan terima kasih dan memulangkan pinggan ke besen menghargai layanan pekerja kantin.'
+            },
+            {
+                role: 'GURU',
+                question: 'Sempena sambutan Hari Guru di sekolah, bagaimanakah murid Tahun 3 boleh menunjukkan rasa terima kasih kepada guru?',
+                options: [
+                    'A. Membuat bising di dalam dewan sekolah.',
+                    'B. Menghasilkan kad ucapan penghargaan dan mendoakan kesejahteraan guru.',
+                    'C. Tidak menyiapkan kerja sekolah yang diberikan.',
+                    'D. Ponteng kelas pada hari tersebut.'
+                ],
+                correctIndex: 1,
+                explanation: 'MULIA! Memberikan kad penghargaan dan mendoakan guru menggembirakan hati mereka yang mendidik kita.'
+            },
+            {
+                role: 'PEKERJA KEBERSIHAN',
+                question: 'Mak Cik Siti baru sahaja mengemop lantai koridor kelas sehingga bersih dan berkilat. Apakah tindakan menghargai jasanya?',
+                options: [
+                    'A. Berjalan dengan berhati-hati dan mengucapkan terima kasih kepadanya.',
+                    'B. Sengaja memijak lantai dengan kasut yang berlumpur.',
+                    'C. Menumpahkan air minuman di koridor tersebut.',
+                    'D. Menolak kawan di atas lantai yang basah.'
+                ],
+                correctIndex: 0,
+                explanation: 'BAGUS! Menghormati hasil kerja pekerja kebersihan dengan menjaga kebersihan lantai ialah tanda berterima kasih.'
+            },
+            {
+                role: 'PENGAWAL KESELAMATAN',
+                question: 'Apakah cara murid menunjukkan penghargaan terhadap pengawal keselamatan yang meronda kawasan sekolah?',
+                options: [
+                    'A. Mematuhi peraturan keselamatan sekolah dan memberikan ucapan salam.',
+                    'B. Memanjat pagar sekolah semasa waktu rehat.',
+                    'C. Bersembunyi di belakang pondok pengawal.',
+                    'D. Tidak menghiraukan nasihat keselamatan pengawal.'
+                ],
+                correctIndex: 0,
+                explanation: 'TEPAT SEKALI! Mematuhi arahan keselamatan membantu pengawal memastikan sekolah sentiasa selamat.'
+            },
+            {
+                role: 'PEKERJA KANTIN',
+                question: 'Pekerja kantin tersenyum mesra semasa menghulurkan air minuman kepada kamu. Apakah balasannya?',
+                options: [
+                    'A. Mengambil air tanpa memandang wajahnya.',
+                    'B. Membalas senyuman dan mengucapkan "Terima kasih, mak cik".',
+                    'C. Membaling duit syiling di atas kaunter.',
+                    'D. Menjerit meminta baki wang dengan kasar.'
+                ],
+                correctIndex: 1,
+                explanation: 'HEBAT! Senyuman dan tutur kata yang sopan menceriakan pekerja kantin yang bertugas.'
+            },
+            {
+                role: 'GURU',
+                question: 'Guru disiplin menasihati kamu supaya datang awal ke sekolah. Bagaimanakah kamu menghargai nasihat tersebut?',
+                options: [
+                    'A. Mendengar dengan sopan, mengucapkan terima kasih dan datang awal ke sekolah.',
+                    'B. Bermasam muka dan menghentak kaki.',
+                    'C. Terus datang lewat pada keesokan harinya.',
+                    'D. Menyalahkan orang lain atas kelewatan sendiri.'
+                ],
+                correctIndex: 0,
+                explanation: 'SYABAS! Menerima nasihat dengan hati terbuka membuktikan kita berterima kasih atas keprihatinan guru.'
+            },
+            {
+                role: 'PEKERJA KEBERSIHAN',
+                question: 'Tandas sekolah sentiasa bersih dan wangi setiap hari. Kepada siapakah kita patut mengucapkan terima kasih?',
+                options: [
+                    'A. Pekerja pembersihan sekolah yang mencuci tandas.',
+                    'B. Pemandu bas sekolah.',
+                    'C. Pengawas perpustakaan.',
+                    'D. Jurujual kedai buku.'
+                ],
+                correctIndex: 0,
+                explanation: 'BETUL! Kita patut berterima kasih kepada pekerja pembersihan dan menjaga kebersihan tandas selepas menggunakannya.'
+            },
+            {
+                role: 'PEKERJA KANTIN',
+                question: 'Mengapakah kita perlu beratur dengan tertib semasa membeli makanan di kantin?',
+                options: [
+                    'A. Supaya dapat membeli makanan dengan percuma.',
+                    'B. Menghormati dan memudahkan tugas pekerja kantin melayan murid.',
+                    'C. Supaya lambat masuk ke kelas.',
+                    'D. Kerana takut dimarahi rakan sekelas.'
+                ],
+                correctIndex: 1,
+                explanation: 'TAHNIAH! Beratur dengan tertib melancarkan urusan pekerja kantin dan menunjukkan rasa hormat.'
+            },
+            {
+                role: 'PENGAWAL KESELAMATAN',
+                question: 'Ibu bapa kamu tiba di pagar sekolah untuk menjemput kamu pulang. Apakah ucapan sesuai kepada pengawal pagar?',
+                options: [
+                    'A. "Terima kasih pak cik, jumpa esok!" sambil melambai sopan.',
+                    'B. Terus berlari keluar tanpa melihat kiri dan kanan.',
+                    'C. Membuka pintu pagar besar tanpa kebenaran.',
+                    'D. Menjerit-jerit di hadapan pondok pengawal.'
+                ],
+                correctIndex: 0,
+                explanation: 'MULIA! Ucapan terima kasih dan salam perpisahan menggembirakan hati pengawal keselamatan sekolah.'
+            }
+        ];
+
+        // Konfigurasi Permainan
+        const LANES = [-2.6, 0, 2.6];
+        const WIN_TARGET_CARDS = 10;
+
+        // Pemboleh Ubah Three.js
+        let scene, camera, renderer;
+        let playerGroup, leftLeg, rightLeg, leftArm, rightArm, headGroup, shieldBubble, hoverboardMesh;
+        let chaserGroup, chaserLeftLeg, chaserRightLeg;
+        let groundTiles = [];
+        let sideBuildings = [];
+        let activeEntities = [];
+        let mazeWalls = [];
+        let mazeItems = [];
+        let mazeGuardians = [];
+        let mazeGridData = [];
+        let mazeTorchLight = null;
+        let clock = new THREE.Clock();
+
+        // Keadaan Permainan (Game State)
+        let gameState = {
+            mode: 'RUNNER', // 'RUNNER' (Subway Surf Style) atau 'MAZE' (Maze Runner 3D)
+            status: 'MENU', // MENU, PLAYING, QUIZ, PAUSED, GAMEOVER, VICTORY
+            playerName: 'Murid Tahun 3',
+            currentLane: 1,
+            targetX: 0,
+            isJumping: false,
+            jumpVelocity: 0,
+            isSliding: false,
+            slideTimer: 0,
+            baseSpeed: 17,
+            currentSpeed: 17,
+            distance: 0,
+            highDistance: parseInt(localStorage.getItem('mtk_high_distance') || '0', 10),
+            score: 0,
+            lives: 3,
+            cardsCollected: 0,
+            comboCount: 0,
+            superComboTimer: 0,
+            // Power-up timers
+            magnetTimer: 0,
+            shieldTimer: 0,
+            boostTimer: 0,
+            invincibleTimer: 0,
+            // Kolam Soalan MCQ
+            questionPool: [],
+            collectedCardsList: [],
+            spawnTimer: 0,
+            // Pemboleh ubah Maze Runner
+            mazePlayerPos: { x: 0, z: 0, rotY: Math.PI },
+            keysPressed: {}
+        };
+
+        // ==================== 2. ENJIN AUDIO & MUZIK ORIGINAL (TONE.JS / WEB AUDIO) ====================
+        let audioSettings = {
+            initialized: false,
+            musicEnabled: true,
+            sfxEnabled: true,
+            musicVolume: 0.75,
+            sfxVolume: 0.85,
+            currentTrack: 'NONE'
+        };
+
+        let sfxSynth = null;
+        let menuSequence = null;
+        let playSequences = [];
+
+        function initAudioEngine() {
+            if (audioSettings.initialized || typeof Tone === 'undefined') return;
+            try {
+                if (Tone.context.state !== 'running') Tone.start();
+
+                sfxSynth = new Tone.PolySynth(Tone.Synth).toDestination();
+                updateSfxVolume(audioSettings.sfxVolume * 100);
+
+                // Muzik Menu Utama (Ceria & Pengembaraan Sekolah)
+                const menuSynth = new Tone.PolySynth(Tone.Synth, {
+                    oscillator: { type: 'triangle' },
+                    envelope: { attack: 0.02, decay: 0.15, sustain: 0.2, release: 0.3 }
+                }).toDestination();
+
+                const menuNotes = ['C4', 'E4', 'G4', 'A4', 'G4', 'E4', 'D4', 'G4'];
+                menuSequence = new Tone.Sequence((time, note) => {
+                    if (audioSettings.musicEnabled && note) {
+                        menuSynth.volume.value = Tone.gainToDb(audioSettings.musicVolume * 0.28);
+                        menuSynth.triggerAttackRelease(note, '8n', time);
+                    }
+                }, menuNotes, '4n');
+
+                // Muzik Semasa Bermain (Upbeat Subway Runner Groove)
+                const kick = new Tone.MembraneSynth().toDestination();
+                const snare = new Tone.NoiseSynth({ envelope: { attack: 0.002, decay: 0.12, sustain: 0 } }).toDestination();
+                const bass = new Tone.MonoSynth({ oscillator: { type: 'sawtooth' }, filter: { Q: 2, type: 'lowpass' } }).toDestination();
+                const lead = new Tone.PolySynth(Tone.Synth, { oscillator: { type: 'square' } }).toDestination();
+
+                const drumSeq = new Tone.Sequence((time, step) => {
+                    if (!audioSettings.musicEnabled) return;
+                    const vol = Tone.gainToDb(audioSettings.musicVolume * 0.32);
+                    kick.volume.value = vol;
+                    snare.volume.value = vol - 6;
+                    if (step % 4 === 0 || step === 10) kick.triggerAttackRelease('C1', '16n', time);
+                    if (step === 4 || step === 12) snare.triggerAttackRelease('16n', time);
+                }, [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], '16n');
+
+                const bassSeq = new Tone.Sequence((time, note) => {
+                    if (audioSettings.musicEnabled && note) {
+                        bass.volume.value = Tone.gainToDb(audioSettings.musicVolume * 0.26);
+                        bass.triggerAttackRelease(note, '16n', time);
+                    }
+                }, ['A2', null, 'A2', 'C3', 'D3', null, 'E3', 'G3', 'A3', null, 'G3', 'E3', 'D3', 'C3', 'A2', 'G2'], '16n');
+
+                const leadSeq = new Tone.Sequence((time, note) => {
+                    if (audioSettings.musicEnabled && note) {
+                        lead.volume.value = Tone.gainToDb(audioSettings.musicVolume * 0.22);
+                        lead.triggerAttackRelease(note, '16n', time);
+                    }
+                }, ['E5', null, 'G5', 'A5', null, 'G5', 'E5', 'D5', 'C5', 'D5', 'E5', 'G5', 'A5', null, 'G5', null], '16n');
+
+                playSequences = [drumSeq, bassSeq, leadSeq];
+                audioSettings.initialized = true;
+            } catch (e) {}
+        }
+
+        function stopAllMusicLoops() {
+            try {
+                if (!audioSettings.initialized) return;
+                Tone.Transport.pause();
+                if (menuSequence) menuSequence.stop();
+                playSequences.forEach(s => s.stop());
+                audioSettings.currentTrack = 'NONE';
+            } catch (e) {}
+        }
+
+        function playMusicTrack(track) {
+            if (!audioSettings.musicEnabled) return;
+            initAudioEngine();
+            try {
+                if (Tone.context.state !== 'running') Tone.start();
+                stopAllMusicLoops();
+                audioSettings.currentTrack = track;
+
+                if (track === 'MENU' && menuSequence) {
+                    Tone.Transport.bpm.value = 112;
+                    menuSequence.start(0);
+                    Tone.Transport.start();
+                } else if (track === 'PLAY' && playSequences.length > 0) {
+                    Tone.Transport.bpm.value = 134;
+                    playSequences.forEach(s => s.start(0));
+                    Tone.Transport.start();
+                }
+            } catch (e) {}
+        }
+
+        function playSfx(type) {
+            if (!audioSettings.sfxEnabled) return;
+            initAudioEngine();
+            try {
+                if (!sfxSynth) return;
+                if (Tone.context.state !== 'running') Tone.start();
+                const now = Tone.now();
+
+                if (type === 'card') sfxSynth.triggerAttackRelease(['C5', 'E5', 'G5', 'C6'], '16n', now);
+                else if (type === 'star') sfxSynth.triggerAttackRelease(['G5', 'B5'], '32n', now);
+                else if (type === 'jump') sfxSynth.triggerAttackRelease(['C4', 'G4'], '16n', now);
+                else if (type === 'slide') sfxSynth.triggerAttackRelease(['G3', 'C3'], '16n', now);
+                else if (type === 'hit') sfxSynth.triggerAttackRelease(['C3', 'F#2'], '8n', now);
+                else if (type === 'powerup' || type === 'combo') sfxSynth.triggerAttackRelease(['E5', 'G#5', 'B5', 'E6'], '16n', now);
+                else if (type === 'gameover') sfxSynth.triggerAttackRelease(['E4', 'D4', 'C4'], '8n', now);
+                else if (type === 'victory') {
+                    sfxSynth.triggerAttackRelease(['C5', 'E5', 'G5'], '8n', now);
+                    sfxSynth.triggerAttackRelease(['G5', 'B5', 'D6'], '4n', now + 0.2);
+                }
+            } catch (e) {}
+        }
+
+        function toggleMusic() {
+            audioSettings.musicEnabled = !audioSettings.musicEnabled;
+            updateAudioUI();
+            if (audioSettings.musicEnabled) {
+                playMusicTrack(gameState.status === 'PLAYING' ? 'PLAY' : 'MENU');
+            } else {
+                stopAllMusicLoops();
+            }
+        }
+
+        function toggleSfx() {
+            audioSettings.sfxEnabled = !audioSettings.sfxEnabled;
+            updateAudioUI();
+            if (audioSettings.sfxEnabled) playSfx('star');
+        }
+
+        function updateMusicVolume(val) {
+            audioSettings.musicVolume = val / 100;
+        }
+
+        function updateSfxVolume(val) {
+            audioSettings.sfxVolume = val / 100;
+            if (sfxSynth) sfxSynth.volume.value = Tone.gainToDb(Math.max(0.01, audioSettings.sfxVolume * 0.4));
+        }
+
+        function updateAudioUI() {
+            const hudMusic = document.getElementById('hud-btn-music');
+            const hudSfx = document.getElementById('hud-btn-sfx');
+            const modMusic = document.getElementById('modal-music-toggle');
+            const modSfx = document.getElementById('modal-sfx-toggle');
+
+            if (hudMusic) hudMusic.textContent = audioSettings.musicEnabled ? '🎵' : '🔇';
+            if (hudSfx) hudSfx.textContent = audioSettings.sfxEnabled ? '🔊' : '🔇';
+            if (modMusic) {
+                modMusic.textContent = audioSettings.musicEnabled ? 'ON' : 'OFF';
+                modMusic.className = `px-3.5 py-1 rounded-xl font-bold text-xs cursor-pointer text-white ${audioSettings.musicEnabled ? 'bg-emerald-500' : 'bg-rose-500'}`;
+            }
+            if (modSfx) {
+                modSfx.textContent = audioSettings.sfxEnabled ? 'ON' : 'OFF';
+                modSfx.className = `px-3.5 py-1 rounded-xl font-bold text-xs cursor-pointer text-white ${audioSettings.sfxEnabled ? 'bg-emerald-500' : 'bg-rose-500'}`;
+            }
+        }
+
+        function testAudioPreview() {
+            initAudioEngine();
+            playSfx('victory');
+        }
+
+        // ==================== 3. INISIALISASI PERSEKITARAN 3D THREE.JS ====================
+        function initThreeJS() {
+            const container = document.getElementById('canvas-container');
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x7DD3FC);
+            scene.fog = new THREE.Fog(0x7DD3FC, 35, 95);
+
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 120);
+            camera.position.set(0, 5.2, 8.6);
+            camera.lookAt(0, 1.8, -8);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            const hemiLight = new THREE.HemisphereLight(0xFFFFFF, 0x4ADE80, 0.85);
+            hemiLight.position.set(0, 30, 0);
+            scene.add(hemiLight);
+
+            const dirLight = new THREE.DirectionalLight(0xFFFBEB, 0.9);
+            dirLight.position.set(15, 28, 12);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 1024;
+            dirLight.shadow.mapSize.height = 1024;
+            scene.add(dirLight);
+
+            buildSchoolTrack();
+            buildSideEnvironment();
+            buildStudentCharacter();
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                resizeConfettiCanvas();
+            });
+        }
+
+        function buildSchoolTrack() {
+            const tileLength = 12;
+            const numTiles = 11;
+
+            for (let i = 0; i < numTiles; i++) {
+                const tileGroup = new THREE.Group();
+
+                const road = new THREE.Mesh(
+                    new THREE.BoxGeometry(9.2, 0.5, tileLength),
+                    new THREE.MeshLambertMaterial({ color: i % 2 === 0 ? 0xE2E8F0 : 0xCBD5E1 })
+                );
+                road.position.y = -0.25;
+                road.receiveShadow = true;
+                tileGroup.add(road);
+
+                const lineMat = new THREE.MeshBasicMaterial({ color: 0xFBBF24 });
+                [-1.3, 1.3].forEach(lx => {
+                    const div = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.05, tileLength * 0.6), lineMat);
+                    div.position.set(lx, 0.02, 0);
+                    tileGroup.add(div);
+                });
+
+                const grass = new THREE.Mesh(
+                    new THREE.BoxGeometry(32, 0.45, tileLength),
+                    new THREE.MeshLambertMaterial({ color: i % 2 === 0 ? 0x4ADE80 : 0x22C55E })
+                );
+                grass.position.y = -0.28;
+                grass.receiveShadow = true;
+                tileGroup.add(grass);
+
+                const curbMat = new THREE.MeshLambertMaterial({ color: i % 2 === 0 ? 0xEF4444 : 0xFFFFFF });
+                [-4.7, 4.7].forEach(cx => {
+                    const curb = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.25, tileLength), curbMat);
+                    curb.position.set(cx, 0.1, 0);
+                    tileGroup.add(curb);
+                });
+
+                tileGroup.position.z = -i * tileLength + 12;
+                scene.add(tileGroup);
+                groundTiles.push(tileGroup);
+            }
+        }
+
+        function buildSideEnvironment() {
+            const spacing = 16;
+            const wallColors = [0xFEF08A, 0xBAE6FD, 0xFED7AA, 0xFECDD3];
+            const roofColors = [0xDC2626, 0x2563EB, 0xD97706];
+
+            for (let i = 0; i < 8; i++) {
+                const rowGroup = new THREE.Group();
+
+                const bGroup = new THREE.Group();
+                const wall = new THREE.Mesh(
+                    new THREE.BoxGeometry(6, 5.5, 11),
+                    new THREE.MeshLambertMaterial({ color: wallColors[i % wallColors.length] })
+                );
+                wall.position.y = 2.75;
+                bGroup.add(wall);
+
+                const roof = new THREE.Mesh(
+                    new THREE.ConeGeometry(4.8, 2.2, 4),
+                    new THREE.MeshLambertMaterial({ color: roofColors[i % roofColors.length] })
+                );
+                roof.position.y = 6.6;
+                roof.rotation.y = Math.PI / 4;
+                roof.scale.set(1, 1, 1.8);
+                bGroup.add(roof);
+
+                bGroup.position.set(-10.5, 0, 0);
+                rowGroup.add(bGroup);
+
+                const tree = new THREE.Group();
+                const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.5, 2.4, 8), new THREE.MeshLambertMaterial({ color: 0x92400E }));
+                trunk.position.y = 1.2;
+                tree.add(trunk);
+                const crown = new THREE.Mesh(new THREE.DodecahedronGeometry(1.7), new THREE.MeshLambertMaterial({ color: 0x16A34A }));
+                crown.position.y = 3.2;
+                tree.add(crown);
+                tree.position.set(7.5, 0, -2);
+                rowGroup.add(tree);
+
+                rowGroup.position.z = -i * spacing + 8;
+                scene.add(rowGroup);
+                sideBuildings.push(rowGroup);
+            }
+        }
+
+        function buildStudentCharacter() {
+            playerGroup = new THREE.Group();
+
+            const skinMat = new THREE.MeshLambertMaterial({ color: 0xFDBA74 });
+            const whiteMat = new THREE.MeshLambertMaterial({ color: 0xFFFFFF });
+            const navyMat = new THREE.MeshLambertMaterial({ color: 0x1E3A8A });
+            const hairMat = new THREE.MeshLambertMaterial({ color: 0x1E293B });
+            const redMat = new THREE.MeshLambertMaterial({ color: 0xEF4444 });
+            const shoeMat = new THREE.MeshLambertMaterial({ color: 0x0F172A });
+
+            const torso = new THREE.Mesh(new THREE.BoxGeometry(0.95, 1.05, 0.55), whiteMat);
+            torso.position.y = 1.35;
+            torso.castShadow = true;
+            playerGroup.add(torso);
+
+            const backpack = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.85, 0.35), redMat);
+            backpack.position.set(0, 1.4, 0.42);
+            playerGroup.add(backpack);
+
+            headGroup = new THREE.Group();
+            headGroup.position.y = 2.25;
+            const head = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.85, 0.85), skinMat);
+            headGroup.add(head);
+
+            // Topi Sukan Terbalik (Gaya Subway Surfer)
+            const cap = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.32, 0.9), new THREE.MeshLambertMaterial({ color: 0xEF4444 }));
+            cap.position.y = 0.34;
+            headGroup.add(cap);
+            const capVisor = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.1, 0.35), new THREE.MeshLambertMaterial({ color: 0xFBBF24 }));
+            capVisor.position.set(0, 0.25, 0.52);
+            headGroup.add(capVisor);
+            playerGroup.add(headGroup);
+
+            leftLeg = new THREE.Group();
+            leftLeg.position.set(-0.24, 0.85, 0);
+            const lMesh = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.75, 0.38), navyMat);
+            lMesh.position.y = -0.35;
+            leftLeg.add(lMesh);
+            const lShoe = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.2, 0.5), shoeMat);
+            lShoe.position.set(0, -0.75, -0.05);
+            leftLeg.add(lShoe);
+            playerGroup.add(leftLeg);
+
+            rightLeg = new THREE.Group();
+            rightLeg.position.set(0.24, 0.85, 0);
+            const rMesh = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.75, 0.38), navyMat);
+            rMesh.position.y = -0.35;
+            rightLeg.add(rMesh);
+            const rShoe = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.2, 0.5), shoeMat);
+            rShoe.position.set(0, -0.75, -0.05);
+            rightLeg.add(rShoe);
+            playerGroup.add(rightLeg);
+
+            leftArm = new THREE.Group();
+            leftArm.position.set(-0.62, 1.75, 0);
+            const lArm = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.75, 0.28), skinMat);
+            lArm.position.y = -0.32;
+            leftArm.add(lArm);
+            playerGroup.add(leftArm);
+
+            rightArm = new THREE.Group();
+            rightArm.position.set(0.62, 1.75, 0);
+            const rArm = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.75, 0.28), skinMat);
+            rArm.position.y = -0.32;
+            rightArm.add(rArm);
+            playerGroup.add(rightArm);
+
+            // Papan Luncur Hoverboard (Aktif semasa Boost / Perisai)
+            hoverboardMesh = new THREE.Mesh(
+                new THREE.BoxGeometry(1.15, 0.16, 2.2),
+                new THREE.MeshLambertMaterial({ color: 0xF59E0B, emissive: 0xD97706, emissiveIntensity: 0.4 })
+            );
+            hoverboardMesh.position.set(0, 0.08, 0);
+            hoverboardMesh.visible = false;
+            playerGroup.add(hoverboardMesh);
+
+            // Gelembung Perisai Keselamatan
+            shieldBubble = new THREE.Mesh(
+                new THREE.SphereGeometry(1.75, 16, 16),
+                new THREE.MeshBasicMaterial({ color: 0x38BDF8, transparent: true, opacity: 0.28 })
+            );
+            shieldBubble.position.y = 1.45;
+            shieldBubble.visible = false;
+            playerGroup.add(shieldBubble);
+
+            playerGroup.position.set(0, 0, 2);
+            scene.add(playerGroup);
+
+            // Watak Pengawas Disiplin yang Mengejar di Belakang (Gaya Inspektor Subway Surf!)
+            chaserGroup = new THREE.Group();
+            const cTorso = new THREE.Mesh(new THREE.BoxGeometry(0.95, 1.05, 0.55), new THREE.MeshLambertMaterial({ color: 0x0284C7 }));
+            cTorso.position.y = 1.35;
+            chaserGroup.add(cTorso);
+            const cHead = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.82, 0.82), skinMat);
+            cHead.position.y = 2.22;
+            chaserGroup.add(cHead);
+            chaserLeftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.8, 0.35), navyMat);
+            chaserLeftLeg.position.set(-0.24, 0.45, 0);
+            chaserGroup.add(chaserLeftLeg);
+            chaserRightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.8, 0.35), navyMat);
+            chaserRightLeg.position.set(0.24, 0.45, 0);
+            chaserGroup.add(chaserRightLeg);
+            chaserGroup.position.set(0, 0, 5.2);
+            scene.add(chaserGroup);
+        }
+
+        // ==================== 4. PENJANAAN OBJEK (BAS SEKOLAH, SOALAN & POWER-UPS) ====================
+        function spawnEntity() {
+            const laneIdx = Math.floor(Math.random() * 3);
+            const xPos = LANES[laneIdx];
+            const zPos = -82;
+            const r = Math.random();
+
+            if (r < 0.32) {
+                // A. PETI SOALAN ANEKA PILIHAN (+20 Markah)
+                const g = new THREE.Group();
+                const card = new THREE.Mesh(
+                    new THREE.BoxGeometry(1.4, 1.65, 0.25),
+                    new THREE.MeshLambertMaterial({ color: 0xFBBF24, emissive: 0xB45309, emissiveIntensity: 0.35 })
+                );
+                g.add(card);
+                const badge = new THREE.Mesh(
+                    new THREE.OctahedronGeometry(0.45),
+                    new THREE.MeshBasicMaterial({ color: 0xEF4444 })
+                );
+                badge.position.y = 0.2;
+                g.add(badge);
+
+                g.position.set(xPos, 1.35, zPos);
+                scene.add(g);
+                activeEntities.push({ type: 'CARD', mesh: g, collected: false });
+
+            } else if (r < 0.54) {
+                // B. DERETAN SYILING / BINTANG EMAS (+5 Markah setiap satu)
+                for (let k = 0; k < 3; k++) {
+                    const star = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.52, 0.52, 0.16, 16),
+                        new THREE.MeshLambertMaterial({ color: 0xFDE047, emissive: 0xCA8A04, emissiveIntensity: 0.45 })
+                    );
+                    star.rotation.x = Math.PI / 2;
+                    star.position.set(xPos, 1.15, zPos - k * 2.4);
+                    scene.add(star);
+                    activeEntities.push({ type: 'STAR', mesh: star, collected: false });
+                }
+
+            } else if (r < 0.65) {
+                // C. ITEM POWER-UP (Magnet, Perisai Hoverboard, Boost Kelajuan, Hati)
+                const pTypes = ['MAGNET', 'SHIELD', 'BOOST', 'HEART'];
+                const pType = pTypes[Math.floor(Math.random() * pTypes.length)];
+                const colorMap = { MAGNET: 0xA855F7, SHIELD: 0x0284C7, BOOST: 0xF97316, HEART: 0xF43F5E };
+
+                const orb = new THREE.Mesh(
+                    new THREE.DodecahedronGeometry(0.75),
+                    new THREE.MeshLambertMaterial({ color: colorMap[pType], emissive: colorMap[pType], emissiveIntensity: 0.45 })
+                );
+                orb.position.set(xPos, 1.35, zPos);
+                scene.add(orb);
+                activeEntities.push({ type: 'POWERUP', subType: pType, mesh: orb, collected: false });
+
+            } else if (r < 0.78) {
+                // D. BAS SEKOLAH KUNING (Gaya Kereta Api Subway Surfers - Tidak boleh dilompat, mesti tukar lorong!)
+                const busGroup = new THREE.Group();
+                const body = new THREE.Mesh(
+                    new THREE.BoxGeometry(2.1, 2.7, 7.5),
+                    new THREE.MeshLambertMaterial({ color: 0xFACC15 })
+                );
+                body.position.y = 1.55;
+                body.castShadow = true;
+                busGroup.add(body);
+
+                const stripe = new THREE.Mesh(
+                    new THREE.BoxGeometry(2.16, 0.35, 7.55),
+                    new THREE.MeshBasicMaterial({ color: 0x1E293B })
+                );
+                stripe.position.y = 1.4;
+                busGroup.add(stripe);
+
+                const windshield = new THREE.Mesh(
+                    new THREE.BoxGeometry(1.85, 0.9, 0.15),
+                    new THREE.MeshBasicMaterial({ color: 0x38BDF8 })
+                );
+                windshield.position.set(0, 2.1, 3.76);
+                busGroup.add(windshield);
+
+                busGroup.position.set(xPos, 0, zPos - 2);
+                scene.add(busGroup);
+                activeEntities.push({ type: 'BUS_OBS', mesh: busGroup, collected: false });
+
+            } else if (r < 0.90) {
+                // E. HALANGAN RENDAH (Kon Keselamatan / Tong Sampah - Perlu LOMPAT)
+                const g = new THREE.Group();
+                const cone = new THREE.Mesh(new THREE.ConeGeometry(0.68, 1.25, 12), new THREE.MeshLambertMaterial({ color: 0xF97316 }));
+                cone.position.y = 0.62;
+                g.add(cone);
+
+                g.position.set(xPos, 0, zPos);
+                scene.add(g);
+                activeEntities.push({ type: 'LOW_OBS', mesh: g, collected: false });
+
+            } else {
+                // F. HALANGAN TINGGI (Penghadang Palang Merah-Putih - Perlu TUNDUK)
+                const g = new THREE.Group();
+                const postMat = new THREE.MeshLambertMaterial({ color: 0x475569 });
+                [-0.95, 0.95].forEach(px => {
+                    const p = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 2.8), postMat);
+                    p.position.set(px, 1.4, 0);
+                    g.add(p);
+                });
+
+                const board = new THREE.Mesh(new THREE.BoxGeometry(2.15, 1.15, 0.25), new THREE.MeshLambertMaterial({ color: 0xDC2626 }));
+                board.position.set(0, 2.25, 0);
+                g.add(board);
+
+                g.position.set(xPos, 0, zPos);
+                scene.add(g);
+                activeEntities.push({ type: 'HIGH_OBS', mesh: g, collected: false });
+            }
+        }
+
+        // ==================== 5. KAWALAN WATAK (KEYBOARD & SWIPE) ====================
+        function setTouchDir(dir, isDown) {
+            if (dir === 'LEFT') gameState.keysPressed['ArrowLeft'] = isDown;
+            if (dir === 'RIGHT') gameState.keysPressed['ArrowRight'] = isDown;
+            if (dir === 'UP') gameState.keysPressed['ArrowUp'] = isDown;
+            if (dir === 'DOWN') gameState.keysPressed['ArrowDown'] = isDown;
+        }
+
+        function moveLeft() {
+            if (gameState.status !== 'PLAYING') return;
+            if (gameState.mode === 'MAZE') {
+                moveMazeStep(-1.4, 0);
+                return;
+            }
+            if (gameState.currentLane > 0) {
+                gameState.currentLane--;
+                gameState.targetX = LANES[gameState.currentLane];
+            }
+        }
+
+        function moveRight() {
+            if (gameState.status !== 'PLAYING') return;
+            if (gameState.mode === 'MAZE') {
+                moveMazeStep(1.4, 0);
+                return;
+            }
+            if (gameState.currentLane < 2) {
+                gameState.currentLane++;
+                gameState.targetX = LANES[gameState.currentLane];
+            }
+        }
+
+        function jumpUp() {
+            if (gameState.status !== 'PLAYING') return;
+            if (gameState.mode === 'MAZE') {
+                moveMazeStep(0, -1.4);
+                return;
+            }
+            if (!gameState.isJumping) {
+                gameState.isJumping = true;
+                gameState.isSliding = false;
+                gameState.jumpVelocity = 11.8;
+                playSfx('jump');
+            }
+        }
+
+        function slideDown() {
+            if (gameState.status !== 'PLAYING') return;
+            if (gameState.mode === 'MAZE') {
+                moveMazeStep(0, 1.4);
+                return;
+            }
+            if (!gameState.isSliding) {
+                gameState.isSliding = true;
+                gameState.slideTimer = 0.78;
+                if (gameState.isJumping) gameState.jumpVelocity = -15;
+                playSfx('slide');
+            }
+        }
+
+        function moveMazeStep(stepX, stepZ) {
+            const nextX = playerGroup.position.x + stepX;
+            const nextZ = playerGroup.position.z + stepZ;
+            let blockedX = false, blockedZ = false;
+            for (let i = 1; i < mazeWalls.length; i++) {
+                const w = mazeWalls[i];
+                if (Math.abs(nextX - w.position.x) < 2.45 && Math.abs(playerGroup.position.z - w.position.z) < 2.45) blockedX = true;
+                if (Math.abs(playerGroup.position.x - w.position.x) < 2.45 && Math.abs(nextZ - w.position.z) < 2.45) blockedZ = true;
+            }
+            if (!blockedX) playerGroup.position.x = nextX;
+            if (!blockedZ) playerGroup.position.z = nextZ;
+            playerGroup.rotation.y = Math.atan2(-stepX, -stepZ);
+            gameState.distance += Math.hypot(stepX, stepZ);
+        }
+
+        window.addEventListener('keydown', (e) => {
+            gameState.keysPressed[e.key] = true;
+            if (gameState.status !== 'PLAYING') return;
+            if (gameState.mode === 'RUNNER') {
+                if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') moveLeft();
+                else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') moveRight();
+                else if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W' || e.key === ' ') jumpUp();
+                else if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') slideDown();
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            gameState.keysPressed[e.key] = false;
+        });
+
+        let touchStartX = 0, touchStartY = 0;
+        window.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        }, { passive: true });
+
+        window.addEventListener('touchend', (e) => {
+            if (gameState.status !== 'PLAYING') return;
+            const dx = e.changedTouches[0].screenX - touchStartX;
+            const dy = e.changedTouches[0].screenY - touchStartY;
+            if (Math.abs(dx) < 25 && Math.abs(dy) < 25) return;
+
+            if (Math.abs(dx) > Math.abs(dy)) {
+                if (dx < 0) moveLeft();
+                else moveRight();
+            } else {
+                if (dy < 0) jumpUp();
+                else slideDown();
+            }
+        }, { passive: true });
+
+        // ==================== 6. ALIRAN PERMAINAN & MOD MAZE RUNNER ====================
+        function selectAndStartMode(selectedMode) {
+            gameState.mode = selectedMode;
+            startGame();
+        }
+
+        function clearMazeEnvironment() {
+            mazeWalls.forEach(w => scene.remove(w));
+            mazeWalls = [];
+            mazeItems.forEach(m => scene.remove(m.mesh));
+            mazeItems = [];
+            mazeGuardians.forEach(g => scene.remove(g.mesh));
+            mazeGuardians = [];
+            if (mazeTorchLight) {
+                playerGroup.remove(mazeTorchLight);
+                mazeTorchLight = null;
+            }
+        }
+
+        // Penjana Tekstur Dinding Batu & Lumut Purba untuk Suasana The Maze Runner Real
+        function createStoneMazeTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+
+            // Asas batu kelabu gelap
+            ctx.fillStyle = '#44403C';
+            ctx.fillRect(0, 0, 256, 256);
+
+            // Blok batu bata raksasa
+            ctx.strokeStyle = '#1C1917';
+            ctx.lineWidth = 6;
+            for (let y = 0; y < 256; y += 64) {
+                const offset = (y / 64) % 2 === 0 ? 0 : 64;
+                for (let x = -64; x < 256; x += 128) {
+                    ctx.fillStyle = (x + y) % 128 === 0 ? '#57534E' : '#44403C';
+                    ctx.fillRect(x + offset, y, 128, 64);
+                    ctx.strokeRect(x + offset, y, 128, 64);
+                }
+            }
+
+            // Lumut hijau menjalar pada dinding labyrinth
+            ctx.fillStyle = 'rgba(21, 128, 61, 0.55)';
+            for (let i = 0; i < 45; i++) {
+                ctx.beginPath();
+                ctx.arc(Math.random() * 256, Math.random() * 256, 6 + Math.random() * 14, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            return tex;
+        }
+
+        function buildMazeEnvironment() {
+            clearMazeEnvironment();
+            // Suasana Misteri Labyrinth The Maze Runner (Langit Senja Berkabut & Dinding Batu Tinggi)
+            scene.background = new THREE.Color(0x1C1917);
+            scene.fog = new THREE.FogExp2(0x1C1917, 0.032);
+
+            // Peta Labyrinth (1 = Dinding Batu Raksasa, 2 = Peti Relik Soalan MCQ, 3 = Kristal Tenaga, 4 = Penjaga Maze)
+            mazeGridData = [
+                [1,1,1,1,1,1,1,1,1,1,1,1,1],
+                [1,2,0,0,1,3,0,0,0,4,0,2,1],
+                [1,0,1,0,1,0,1,1,1,0,1,0,1],
+                [1,0,1,2,0,0,0,2,1,0,1,0,1],
+                [1,0,1,1,1,0,1,0,1,0,0,2,1],
+                [1,3,0,0,0,0,1,0,0,4,1,0,1],
+                [1,1,1,0,1,0,0,0,1,0,1,0,1],
+                [1,2,0,0,1,2,1,0,1,0,0,2,1],
+                [1,0,1,1,1,0,1,0,1,1,1,0,1],
+                [1,0,0,4,0,0,0,0,0,2,0,0,1],
+                [1,0,1,1,1,0,1,1,1,0,1,0,1],
+                [1,2,0,0,0,2,0,0,1,2,0,3,1],
+                [1,1,1,1,1,1,1,1,1,1,1,1,1]
+            ];
+            const cellSize = 4.6;
+            const offset = (mazeGridData.length * cellSize) / 2;
+
+            const stoneTex = createStoneMazeTexture();
+            const wallMat = new THREE.MeshLambertMaterial({ map: stoneTex });
+            const capMat = new THREE.MeshLambertMaterial({ color: 0x14532D });
+
+            for (let r = 0; r < mazeGridData.length; r++) {
+                for (let c = 0; c < mazeGridData[r].length; c++) {
+                    const wx = c * cellSize - offset;
+                    const wz = r * cellSize - offset;
+                    const cell = mazeGridData[r][c];
+
+                    if (cell === 1) {
+                        // Dinding Labyrinth Batu Tinggi (5.8m) seperti filem The Maze Runner
+                        const wallGroup = new THREE.Group();
+                        const wall = new THREE.Mesh(new THREE.BoxGeometry(cellSize, 5.8, cellSize), wallMat);
+                        wall.position.y = 2.9;
+                        wall.castShadow = true;
+                        wall.receiveShadow = true;
+                        wallGroup.add(wall);
+
+                        // Rumput/lumut di puncak tembok
+                        const topCap = new THREE.Mesh(new THREE.BoxGeometry(cellSize + 0.1, 0.35, cellSize + 0.1), capMat);
+                        topCap.position.y = 5.85;
+                        wallGroup.add(topCap);
+
+                        wallGroup.position.set(wx, 0, wz);
+                        scene.add(wallGroup);
+                        mazeWalls.push(wallGroup);
+                    } else if (cell === 2) {
+                        // Relik Emas Soalan Pendidikan Moral
+                        const relicGroup = new THREE.Group();
+                        const core = new THREE.Mesh(
+                            new THREE.OctahedronGeometry(0.85, 0),
+                            new THREE.MeshLambertMaterial({ color: 0xFBBF24, emissive: 0xD97706, emissiveIntensity: 0.65 })
+                        );
+                        relicGroup.add(core);
+                        const ring = new THREE.Mesh(
+                            new THREE.TorusGeometry(1.15, 0.08, 8, 24),
+                            new THREE.MeshBasicMaterial({ color: 0xFEF08A })
+                        );
+                        relicGroup.add(ring);
+                        relicGroup.position.set(wx, 1.35, wz);
+                        scene.add(relicGroup);
+                        mazeItems.push({ type: 'CARD', mesh: relicGroup, collected: false });
+                    } else if (cell === 3) {
+                        // Kristal Tenaga Biru (+15 Markah)
+                        const star = new THREE.Mesh(
+                            new THREE.DodecahedronGeometry(0.75),
+                            new THREE.MeshLambertMaterial({ color: 0x38BDF8, emissive: 0x0284C7, emissiveIntensity: 0.6 })
+                        );
+                        star.position.set(wx, 1.25, wz);
+                        scene.add(star);
+                        mazeItems.push({ type: 'STAR', mesh: star, collected: false });
+                    } else if (cell === 4) {
+                        // Penjaga Mekanikal Maze (Meronda lorong - perlu dielakkan!)
+                        const guardGroup = new THREE.Group();
+                        const body = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.65, 0.85, 1.8, 8),
+                            new THREE.MeshLambertMaterial({ color: 0x991B1B, emissive: 0x7F1D1D, emissiveIntensity: 0.4 })
+                        );
+                        body.position.y = 1.0;
+                        guardGroup.add(body);
+                        const eye = new THREE.Mesh(
+                            new THREE.SphereGeometry(0.32, 12, 12),
+                            new THREE.MeshBasicMaterial({ color: 0xEF4444 })
+                        );
+                        eye.position.set(0, 1.4, 0.65);
+                        guardGroup.add(eye);
+                        guardGroup.position.set(wx, 0, wz);
+                        scene.add(guardGroup);
+                        mazeGuardians.push({
+                            mesh: guardGroup,
+                            originX: wx,
+                            originZ: wz,
+                            axis: (r + c) % 2 === 0 ? 'X' : 'Z',
+                            phase: Math.random() * Math.PI * 2
+                        });
+                    }
+                }
+            }
+
+            // Obor Cahaya Hangat Mengikuti Pelari (Glader Torchlight)
+            mazeTorchLight = new THREE.PointLight(0xFBBF24, 1.6, 22);
+            mazeTorchLight.position.set(0, 3.2, 0);
+            playerGroup.add(mazeTorchLight);
+
+            // Letak pemain di zon tengah 'The Glade'
+            playerGroup.position.set(0, 0, 0);
+            playerGroup.rotation.set(0, 0, 0);
+            if (chaserGroup) chaserGroup.visible = false;
+        }
+
+        function drawMazeRadar() {
+            const canvas = document.getElementById('maze-radar-canvas');
+            if (!canvas || mazeGridData.length === 0) return;
+            const ctx = canvas.getContext('2d');
+            const size = canvas.width;
+            const rows = mazeGridData.length;
+            const cellPx = size / rows;
+            const cellSize = 4.6;
+            const offset = (rows * cellSize) / 2;
+
+            ctx.clearRect(0, 0, size, size);
+
+            // Lukis dinding & laluan maze
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < rows; c++) {
+                    ctx.fillStyle = mazeGridData[r][c] === 1 ? '#57534E' : '#1C1917';
+                    ctx.fillRect(c * cellPx, r * cellPx, cellPx, cellPx);
+                }
+            }
+
+            // Lukis titik Relik Emas (Soalan)
+            mazeItems.forEach(item => {
+                if (item.collected) return;
+                const rx = ((item.mesh.position.x + offset) / cellSize) * cellPx;
+                const rz = ((item.mesh.position.z + offset) / cellSize) * cellPx;
+                ctx.fillStyle = item.type === 'CARD' ? '#FBBF24' : '#38BDF8';
+                ctx.beginPath();
+                ctx.arc(rx, rz, 3.2, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Lukis titik Penjaga Merah
+            mazeGuardians.forEach(g => {
+                const gx = ((g.mesh.position.x + offset) / cellSize) * cellPx;
+                const gz = ((g.mesh.position.z + offset) / cellSize) * cellPx;
+                ctx.fillStyle = '#EF4444';
+                ctx.beginPath();
+                ctx.arc(gx, gz, 3.5, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Lukis kedudukan pemain (Titik Hijau Cerah)
+            const px = ((playerGroup.position.x + offset) / cellSize) * cellPx;
+            const pz = ((playerGroup.position.z + offset) / cellSize) * cellPx;
+            ctx.fillStyle = '#4ADE80';
+            ctx.beginPath();
+            ctx.arc(px, pz, 4.2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+        }
+
+        function startGame() {
+            const nameVal = document.getElementById('player-name-input').value.trim();
+            gameState.playerName = nameVal || 'Murid Cemerlang Tahun 3';
+
+            initAudioEngine();
+            playSfx('powerup');
+            playMusicTrack('PLAY');
+
+            // Reset semua nilai
+            gameState.status = 'PLAYING';
+            gameState.currentLane = 1;
+            gameState.targetX = 0;
+            gameState.isJumping = false;
+            gameState.jumpVelocity = 0;
+            gameState.isSliding = false;
+            gameState.slideTimer = 0;
+            gameState.baseSpeed = 17;
+            gameState.currentSpeed = 17;
+            gameState.distance = 0;
+            gameState.score = 0;
+            gameState.lives = 3;
+            gameState.cardsCollected = 0;
+            gameState.comboCount = 0;
+            gameState.superComboTimer = 0;
+            gameState.magnetTimer = 0;
+            gameState.shieldTimer = 0;
+            gameState.boostTimer = 0;
+            gameState.invincibleTimer = 0;
+            gameState.questionPool = [...MCQ_BANK].sort(() => Math.random() - 0.5);
+            gameState.collectedCardsList = [];
+            gameState.spawnTimer = 0;
+
+            activeEntities.forEach(e => scene.remove(e.mesh));
+            activeEntities = [];
+            clearMazeEnvironment();
+            stopConfetti();
+
+            playerGroup.scale.set(1, 1, 1);
+            shieldBubble.visible = false;
+            hoverboardMesh.visible = false;
+
+            if (gameState.mode === 'MAZE') {
+                groundTiles.forEach(t => t.visible = false);
+                sideBuildings.forEach(b => b.visible = false);
+                // Lantai batu berlumut The Glade & Labyrinth
+                const mazeFloor = new THREE.Mesh(
+                    new THREE.BoxGeometry(75, 0.5, 75),
+                    new THREE.MeshLambertMaterial({ color: 0x292524 })
+                );
+                mazeFloor.position.y = -0.25;
+                mazeFloor.receiveShadow = true;
+                scene.add(mazeFloor);
+                mazeWalls.push(mazeFloor);
+                buildMazeEnvironment();
+                document.getElementById('maze-radar-container').classList.remove('hidden');
+            } else {
+                scene.background = new THREE.Color(0x7DD3FC);
+                scene.fog = new THREE.Fog(0x7DD3FC, 35, 95);
+                groundTiles.forEach(t => t.visible = true);
+                sideBuildings.forEach(b => b.visible = true);
+                document.getElementById('maze-radar-container').classList.add('hidden');
+                playerGroup.position.set(0, 0, 2);
+                playerGroup.rotation.set(0, 0, 0);
+                if (chaserGroup) {
+                    chaserGroup.visible = true;
+                    chaserGroup.position.set(0, 0, 5.2);
+                }
+                camera.position.set(0, 5.2, 8.6);
+                camera.lookAt(0, 1.8, -8);
+            }
+
+            // Sembunyikan modal lain & papar HUD
+            ['main-menu-screen', 'pause-screen', 'gameover-screen', 'victory-screen', 'mcq-modal'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            document.getElementById('game-hud').classList.remove('hidden');
+            document.getElementById('touch-controls').classList.remove('hidden');
+            document.getElementById('danger-vignette').classList.add('hidden');
+
+            updateHUD();
+        }
+
+        function pauseGame() {
+            if (gameState.status !== 'PLAYING') return;
+            gameState.status = 'PAUSED';
+            stopAllMusicLoops();
+            document.getElementById('pause-screen').classList.remove('hidden');
+        }
+
+        function resumeGame() {
+            if (gameState.status !== 'PAUSED') return;
+            gameState.status = 'PLAYING';
+            document.getElementById('pause-screen').classList.add('hidden');
+            playMusicTrack('PLAY');
+        }
+
+        function returnToMainMenu() {
+            gameState.status = 'MENU';
+            stopConfetti();
+            ['pause-screen', 'gameover-screen', 'victory-screen', 'game-hud', 'touch-controls', 'learning-toast', 'danger-vignette', 'maze-radar-container'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            document.getElementById('menu-high-score').textContent = gameState.highDistance;
+            document.getElementById('main-menu-screen').classList.remove('hidden');
+            playMusicTrack('MENU');
+        }
+
+        function openHowToPlay() {
+            playSfx('star');
+            document.getElementById('howto-modal').classList.remove('hidden');
+        }
+
+        function closeHowToPlay() {
+            playSfx('star');
+            document.getElementById('howto-modal').classList.add('hidden');
+        }
+
+        function openAudioSettings() {
+            updateAudioUI();
+            document.getElementById('audio-modal').classList.remove('hidden');
+        }
+
+        function closeAudioSettings() {
+            document.getElementById('audio-modal').classList.add('hidden');
+        }
+
+        function updateHUD() {
+            const distInt = Math.floor(gameState.distance);
+            if (distInt > gameState.highDistance) {
+                gameState.highDistance = distInt;
+                localStorage.setItem('mtk_high_distance', String(distInt));
+            }
+
+            document.getElementById('hud-distance').textContent = distInt;
+            document.getElementById('hud-high-distance').textContent = gameState.highDistance;
+            document.getElementById('hud-cards').textContent = `${gameState.cardsCollected}/${WIN_TARGET_CARDS}`;
+            document.getElementById('hud-score').textContent = gameState.score;
+            document.getElementById('hud-combo').textContent = gameState.superComboTimer > 0 ? '2X!' : `${gameState.comboCount}/5`;
+
+            let hearts = '';
+            for (let i = 0; i < 3; i++) {
+                hearts += i < gameState.lives ? '❤️' : '🖤';
+            }
+            document.getElementById('hud-lives').textContent = hearts;
+
+            // Amaran nyawa rendah (1 hati)
+            const dangerEl = document.getElementById('danger-vignette');
+            if (gameState.lives === 1) dangerEl.classList.remove('hidden');
+            else dangerEl.classList.add('hidden');
+
+            // Papar lencana Power-up aktif
+            const bar = document.getElementById('powerup-status-bar');
+            let pills = '';
+            if (gameState.magnetTimer > 0) pills += `<span class="bg-purple-600 text-white text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-white shadow">🧲 Magnet (${Math.ceil(gameState.magnetTimer)}s)</span>`;
+            if (gameState.shieldTimer > 0) pills += `<span class="bg-sky-600 text-white text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-white shadow">🛡️ Perisai (${Math.ceil(gameState.shieldTimer)}s)</span>`;
+            if (gameState.boostTimer > 0) pills += `<span class="bg-orange-600 text-white text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-white shadow">⚡ Boost (${Math.ceil(gameState.boostTimer)}s)</span>`;
+            bar.innerHTML = pills;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const dt = Math.min(clock.getDelta(), 0.05);
+
+            if (gameState.status === 'PLAYING') {
+                if (gameState.mode === 'RUNNER') {
+                    updateGameplay(dt);
+                } else {
+                    updateMazeGameplay(dt);
+                }
+            } else if (gameState.status === 'MENU') {
+                const t = clock.getElapsedTime();
+                playerGroup.position.y = Math.abs(Math.sin(t * 4)) * 0.15;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        function updateMazeGameplay(dt) {
+            const moveSpeed = 9.2;
+            let dx = 0, dz = 0;
+
+            if (gameState.keysPressed['ArrowLeft'] || gameState.keysPressed['a'] || gameState.keysPressed['A']) dx -= 1;
+            if (gameState.keysPressed['ArrowRight'] || gameState.keysPressed['d'] || gameState.keysPressed['D']) dx += 1;
+            if (gameState.keysPressed['ArrowUp'] || gameState.keysPressed['w'] || gameState.keysPressed['W']) dz -= 1;
+            if (gameState.keysPressed['ArrowDown'] || gameState.keysPressed['s'] || gameState.keysPressed['S']) dz += 1;
+
+            if (gameState.invincibleTimer > 0) {
+                gameState.invincibleTimer -= dt;
+                playerGroup.visible = Math.floor(gameState.invincibleTimer * 16) % 2 === 0;
+            } else {
+                playerGroup.visible = true;
+            }
+
+            if (dx !== 0 || dz !== 0) {
+                const len = Math.hypot(dx, dz);
+                dx = (dx / len) * moveSpeed * dt;
+                dz = (dz / len) * moveSpeed * dt;
+
+                const nextX = playerGroup.position.x + dx;
+                const nextZ = playerGroup.position.z + dz;
+
+                // Semak pelanggaran dinding batu labyrinth (cellSize 4.6)
+                let blockedX = false, blockedZ = false;
+                for (let i = 1; i < mazeWalls.length; i++) {
+                    const w = mazeWalls[i];
+                    if (Math.abs(nextX - w.position.x) < 2.75 && Math.abs(playerGroup.position.z - w.position.z) < 2.75) blockedX = true;
+                    if (Math.abs(playerGroup.position.x - w.position.x) < 2.75 && Math.abs(nextZ - w.position.z) < 2.75) blockedZ = true;
+                }
+
+                if (!blockedX) playerGroup.position.x = nextX;
+                if (!blockedZ) playerGroup.position.z = nextZ;
+
+                playerGroup.rotation.y = Math.atan2(-dx, -dz);
+                gameState.distance += Math.hypot(dx, dz);
+
+                const cycle = gameState.distance * 1.4;
+                leftLeg.rotation.x = Math.sin(cycle) * 0.75;
+                rightLeg.rotation.x = -Math.sin(cycle) * 0.75;
+                leftArm.rotation.x = -Math.sin(cycle) * 0.65;
+                rightArm.rotation.x = Math.sin(cycle) * 0.65;
+            }
+
+            // Kamera mengikut dari sudut pandangan atas-belakang labyrinth
+            camera.position.set(playerGroup.position.x, 11.2, playerGroup.position.z + 9.2);
+            camera.lookAt(playerGroup.position.x, 1.0, playerGroup.position.z - 1.8);
+
+            // Rondaan Penjaga Maze (Maze Guardians)
+            const elapsed = clock.getElapsedTime();
+            for (let g of mazeGuardians) {
+                const offsetMove = Math.sin(elapsed * 1.6 + g.phase) * 3.4;
+                if (g.axis === 'X') g.mesh.position.x = g.originX + offsetMove;
+                else g.mesh.position.z = g.originZ + offsetMove;
+                g.mesh.rotation.y += dt * 3;
+
+                if (gameState.invincibleTimer <= 0 &&
+                    Math.hypot(playerGroup.position.x - g.mesh.position.x, playerGroup.position.z - g.mesh.position.z) < 1.35) {
+                    playSfx('hit');
+                    gameState.lives--;
+                    gameState.comboCount = 0;
+                    gameState.invincibleTimer = 2.0;
+                    gsap.fromTo(camera.position, { x: playerGroup.position.x - 0.35 }, { x: playerGroup.position.x + 0.35, duration: 0.06, yoyo: true, repeat: 5 });
+                    updateHUD();
+                    if (gameState.lives <= 0) {
+                        triggerGameOver();
+                        return;
+                    }
+                }
+            }
+
+            // Kutipan relik soalan & kristal tenaga dalam maze
+            for (let i = mazeItems.length - 1; i >= 0; i--) {
+                const item = mazeItems[i];
+                if (item.collected) continue;
+                item.mesh.rotation.y += dt * 2.6;
+
+                if (Math.hypot(playerGroup.position.x - item.mesh.position.x, playerGroup.position.z - item.mesh.position.z) < 1.65) {
+                    item.collected = true;
+                    scene.remove(item.mesh);
+                    if (item.type === 'CARD') {
+                        triggerMCQModal();
+                    } else {
+                        playSfx('star');
+                        gameState.score += 15;
+                        updateHUD();
+                    }
+                }
+            }
+
+            drawMazeRadar();
+            updateHUD();
+        }
+
+        function updateGameplay(dt) {
+            // 1. Kelajuan meningkat beransur-ansur + Boost
+            gameState.baseSpeed = Math.min(28, 17 + gameState.distance * 0.011);
+            gameState.currentSpeed = gameState.boostTimer > 0 ? gameState.baseSpeed * 1.45 : gameState.baseSpeed;
+            gameState.distance += gameState.currentSpeed * dt;
+
+            // Intensiti muzik meningkat mengikut kelajuan
+            if (audioSettings.initialized && audioSettings.currentTrack === 'PLAY') {
+                Tone.Transport.bpm.value = Math.min(154, 134 + (gameState.currentSpeed - 17) * 1.3);
+            }
+
+            // Kemas kini pemasa Power-up & Super Combo
+            if (gameState.magnetTimer > 0) gameState.magnetTimer -= dt;
+            if (gameState.shieldTimer > 0) {
+                gameState.shieldTimer -= dt;
+                shieldBubble.visible = true;
+                hoverboardMesh.visible = true;
+            } else {
+                shieldBubble.visible = gameState.boostTimer > 0;
+                hoverboardMesh.visible = gameState.boostTimer > 0;
+            }
+            if (gameState.boostTimer > 0) gameState.boostTimer -= dt;
+
+            if (gameState.superComboTimer > 0) {
+                gameState.superComboTimer -= dt;
+                document.getElementById('super-combo-banner').classList.remove('hidden');
+            } else {
+                document.getElementById('super-combo-banner').classList.add('hidden');
+            }
+
+            if (gameState.invincibleTimer > 0) {
+                gameState.invincibleTimer -= dt;
+                playerGroup.visible = Math.floor(gameState.invincibleTimer * 16) % 2 === 0;
+            } else {
+                playerGroup.visible = true;
+            }
+
+            // 2. Gerakkan laluan sekolah & landskap
+            const moveDelta = gameState.currentSpeed * dt;
+            groundTiles.forEach(t => {
+                t.position.z += moveDelta;
+                if (t.position.z > 24) t.position.z -= 11 * 12;
+            });
+            sideBuildings.forEach(b => {
+                b.position.z += moveDelta;
+                if (b.position.z > 24) b.position.z -= 8 * 16;
+            });
+
+            // 3. Pergerakan lorong, lompatan & menunduk
+            playerGroup.position.x += (gameState.targetX - playerGroup.position.x) * Math.min(1, dt * 14);
+            playerGroup.rotation.z = (playerGroup.position.x - gameState.targetX) * 0.12;
+
+            // Pengawas mengejar di belakang (gaya Inspektor Subway Surf!)
+            if (chaserGroup) {
+                chaserGroup.position.x += (playerGroup.position.x - chaserGroup.position.x) * Math.min(1, dt * 6);
+                const targetChaserZ = gameState.lives === 1 ? 3.8 : 5.6;
+                chaserGroup.position.z += (targetChaserZ - chaserGroup.position.z) * Math.min(1, dt * 3);
+                const cCycle = gameState.distance * 0.95;
+                chaserLeftLeg.rotation.x = Math.sin(cCycle) * 0.8;
+                chaserRightLeg.rotation.x = -Math.sin(cCycle) * 0.8;
+            }
+
+            if (gameState.isJumping) {
+                playerGroup.position.y += gameState.jumpVelocity * dt;
+                gameState.jumpVelocity -= 29 * dt;
+                if (playerGroup.position.y <= 0) {
+                    playerGroup.position.y = 0;
+                    gameState.isJumping = false;
+                    gameState.jumpVelocity = 0;
+                }
+            }
+
+            if (gameState.isSliding) {
+                gameState.slideTimer -= dt;
+                playerGroup.scale.y += (0.48 - playerGroup.scale.y) * Math.min(1, dt * 18);
+                if (gameState.slideTimer <= 0) gameState.isSliding = false;
+            } else {
+                playerGroup.scale.y += (1 - playerGroup.scale.y) * Math.min(1, dt * 15);
+            }
+
+            // 4. Animasi kaki & tangan berlari
+            const cycle = gameState.distance * 0.85;
+            if (!gameState.isJumping && !gameState.isSliding) {
+                leftLeg.rotation.x = Math.sin(cycle) * 0.75;
+                rightLeg.rotation.x = -Math.sin(cycle) * 0.75;
+                leftArm.rotation.x = -Math.sin(cycle) * 0.65;
+                rightArm.rotation.x = Math.sin(cycle) * 0.65;
+            }
+
+            // 5. Penjanaan objek rawak
+            gameState.spawnTimer -= dt;
+            if (gameState.spawnTimer <= 0) {
+                spawnEntity();
+                gameState.spawnTimer = Math.max(0.62, 1.25 - (gameState.baseSpeed - 17) * 0.04);
+            }
+
+            // 6. Perlanggaran & Kutipan Item
+            const multiplier = gameState.superComboTimer > 0 ? 2 : 1;
+
+            for (let i = activeEntities.length - 1; i >= 0; i--) {
+                const ent = activeEntities[i];
+                ent.mesh.position.z += moveDelta;
+
+                if (ent.type === 'CARD' || ent.type === 'STAR' || ent.type === 'POWERUP') {
+                    ent.mesh.rotation.y += dt * 2.8;
+                }
+
+                // Kesan Magnet Bintang
+                if (ent.type === 'STAR' && gameState.magnetTimer > 0 && ent.mesh.position.z > -18 && ent.mesh.position.z < 5) {
+                    ent.mesh.position.x += (playerGroup.position.x - ent.mesh.position.x) * Math.min(1, dt * 10);
+                    ent.mesh.position.y += (playerGroup.position.y + 1.2 - ent.mesh.position.y) * Math.min(1, dt * 10);
+                }
+
+                const zHitRange = ent.type === 'BUS_OBS' ? 3.8 : 1.15;
+                if (!ent.collected && Math.abs(ent.mesh.position.z - playerGroup.position.z) < zHitRange) {
+                    const sameLane = Math.abs(ent.mesh.position.x - playerGroup.position.x) < 1.05;
+
+                    if (sameLane) {
+                        if (ent.type === 'CARD') {
+                            ent.collected = true;
+                            scene.remove(ent.mesh);
+                            triggerMCQModal();
+                        } else if (ent.type === 'STAR') {
+                            ent.collected = true;
+                            scene.remove(ent.mesh);
+                            playSfx('star');
+                            gameState.score += 5 * multiplier;
+                        } else if (ent.type === 'POWERUP') {
+                            ent.collected = true;
+                            scene.remove(ent.mesh);
+                            activatePowerUp(ent.subType);
+                        } else if (ent.type === 'BUS_OBS') {
+                            ent.collected = true;
+                            handleObstacleCollision(ent.mesh);
+                        } else if (ent.type === 'LOW_OBS') {
+                            if (playerGroup.position.y < 1.05) {
+                                ent.collected = true;
+                                handleObstacleCollision(ent.mesh);
+                            }
+                        } else if (ent.type === 'HIGH_OBS') {
+                            if (!gameState.isSliding) {
+                                ent.collected = true;
+                                handleObstacleCollision(ent.mesh);
+                            }
+                        }
+                    }
+                }
+
+                if (ent.mesh.position.z > 14) {
+                    scene.remove(ent.mesh);
+                    activeEntities.splice(i, 1);
+                }
+            }
+
+            updateHUD();
+        }
+
+        // ==================== 7. SISTEM SOALAN ANEKA PILIHAN (MCQ), POWER-UP & TAMAT ====================
+        function triggerMCQModal() {
+            if (gameState.status !== 'PLAYING') return;
+            gameState.status = 'QUIZ';
+            playSfx('card');
+
+            if (gameState.questionPool.length === 0) {
+                gameState.questionPool = [...MCQ_BANK].sort(() => Math.random() - 0.5);
+            }
+            const qData = gameState.questionPool.pop();
+
+            const modal = document.getElementById('mcq-modal');
+            document.getElementById('mcq-category-badge').textContent = `💌 WARGA SEKOLAH: ${qData.role}`;
+            document.getElementById('mcq-question-text').textContent = qData.question;
+
+            const optionsGrid = document.getElementById('mcq-options-grid');
+            const feedbackBox = document.getElementById('mcq-feedback-box');
+            feedbackBox.classList.add('hidden');
+            optionsGrid.innerHTML = '';
+
+            qData.options.forEach((optText, idx) => {
+                const btn = document.createElement('button');
+                btn.className = 'w-full p-3 bg-indigo-50 hover:bg-amber-100 text-indigo-950 font-semibold text-xs sm:text-sm rounded-2xl border-2 border-indigo-200 transition cursor-pointer text-left';
+                btn.textContent = optText;
+                btn.onclick = () => evaluateMCQAnswer(idx, qData, btn);
+                optionsGrid.appendChild(btn);
+            });
+
+            modal.classList.remove('hidden');
+            gsap.fromTo('#mcq-card', { scale: 0.85, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.25 });
+        }
+
+        function evaluateMCQAnswer(selectedIdx, qData, btnEl) {
+            const buttons = document.getElementById('mcq-options-grid').querySelectorAll('button');
+            buttons.forEach(b => b.disabled = true);
+
+            const feedbackBox = document.getElementById('mcq-feedback-box');
+            const multiplier = gameState.superComboTimer > 0 ? 2 : 1;
+
+            gameState.cardsCollected++;
+            gameState.collectedCardsList.push({
+                role: qData.role,
+                text: qData.options[qData.correctIndex].replace(/^[A-D]\.\s*/, '')
+            });
+
+            if (selectedIdx === qData.correctIndex) {
+                playSfx('combo');
+                gameState.score += 20 * multiplier;
+                gameState.comboCount++;
+
+                if (gameState.comboCount >= 5) {
+                    gameState.comboCount = 0;
+                    gameState.superComboTimer = 8;
+                }
+
+                btnEl.className = 'w-full p-3 bg-emerald-500 text-white font-bold text-xs sm:text-sm rounded-2xl border-2 border-emerald-700 text-left';
+                feedbackBox.className = 'rounded-2xl p-3 text-xs sm:text-sm font-semibold mt-2 text-left bg-emerald-100 text-emerald-950 border border-emerald-400';
+                feedbackBox.innerHTML = `🎉 <b>JAWAPAN BETUL! (+${20 * multiplier} Markah)</b><br>${qData.explanation}`;
+            } else {
+                playSfx('hit');
+                gameState.comboCount = 0;
+                btnEl.className = 'w-full p-3 bg-rose-500 text-white font-bold text-xs sm:text-sm rounded-2xl border-2 border-rose-700 text-left';
+                buttons[qData.correctIndex].className = 'w-full p-3 bg-emerald-500 text-white font-bold text-xs sm:text-sm rounded-2xl border-2 border-emerald-700 text-left';
+                feedbackBox.className = 'rounded-2xl p-3 text-xs sm:text-sm font-semibold mt-2 text-left bg-amber-100 text-amber-950 border border-amber-400';
+                feedbackBox.innerHTML = `💡 <b>JAWAPAN TEPAT: ${qData.options[qData.correctIndex]}</b><br>${qData.explanation}`;
+            }
+
+            feedbackBox.classList.remove('hidden');
+            updateHUD();
+
+            setTimeout(() => {
+                document.getElementById('mcq-modal').classList.add('hidden');
+                if (gameState.cardsCollected >= WIN_TARGET_CARDS) {
+                    triggerVictory();
+                } else {
+                    gameState.invincibleTimer = 1.6;
+                    gameState.status = 'PLAYING';
+                }
+            }, 2500);
+        }
+
+        function activatePowerUp(type) {
+            playSfx('powerup');
+            if (type === 'MAGNET') gameState.magnetTimer = 10;
+            else if (type === 'SHIELD') gameState.shieldTimer = 10;
+            else if (type === 'BOOST') {
+                gameState.boostTimer = 5;
+                gameState.score += 20;
+            } else if (type === 'HEART') {
+                if (gameState.lives < 3) gameState.lives++;
+                else gameState.score += 25;
+            }
+            updateHUD();
+        }
+
+        function handleObstacleCollision(obsMesh) {
+            if (gameState.shieldTimer > 0 || gameState.boostTimer > 0) {
+                playSfx('star');
+                scene.remove(obsMesh);
+                if (gameState.shieldTimer > 0) gameState.shieldTimer = 0;
+                return;
+            }
+
+            if (gameState.invincibleTimer > 0) return;
+
+            playSfx('hit');
+            gameState.lives--;
+            gameState.comboCount = 0;
+            gameState.invincibleTimer = 1.8;
+
+            gsap.fromTo(camera.position, { x: -0.35 }, { x: 0.35, duration: 0.06, yoyo: true, repeat: 5, onComplete: () => camera.position.x = 0 });
+            updateHUD();
+
+            if (gameState.lives <= 0) {
+                triggerGameOver();
+            }
+        }
+
+        function triggerGameOver() {
+            gameState.status = 'GAMEOVER';
+            stopAllMusicLoops();
+            playSfx('gameover');
+
+            document.getElementById('game-hud').classList.add('hidden');
+            document.getElementById('touch-controls').classList.add('hidden');
+            document.getElementById('learning-toast').classList.add('hidden');
+            document.getElementById('danger-vignette').classList.add('hidden');
+
+            document.getElementById('go-score').textContent = gameState.score;
+            document.getElementById('go-distance').textContent = `${Math.floor(gameState.distance)} m`;
+            document.getElementById('go-cards').textContent = `${gameState.cardsCollected}/${WIN_TARGET_CARDS}`;
+
+            document.getElementById('gameover-screen').classList.remove('hidden');
+        }
+
+        function triggerVictory() {
+            gameState.status = 'VICTORY';
+            stopAllMusicLoops();
+            playSfx('victory');
+            startConfetti();
+
+            document.getElementById('game-hud').classList.add('hidden');
+            document.getElementById('touch-controls').classList.add('hidden');
+            document.getElementById('learning-toast').classList.add('hidden');
+            document.getElementById('danger-vignette').classList.add('hidden');
+
+            document.getElementById('win-player-name').textContent = gameState.playerName;
+            document.getElementById('win-score').textContent = gameState.score;
+            document.getElementById('win-cards').textContent = `${gameState.cardsCollected}/${WIN_TARGET_CARDS}`;
+            document.getElementById('win-distance').textContent = `${Math.floor(gameState.distance)} m`;
+
+            const listEl = document.getElementById('win-summary-list');
+            listEl.innerHTML = gameState.collectedCardsList
+                .map(c => `<li><b>[${c.role}]</b> ${c.text}</li>`)
+                .join('');
+
+            document.getElementById('victory-screen').classList.remove('hidden');
+        }
+
+        // ==================== 8. ANIMASI KONFETI KEMENANGAN ====================
+        const confettiCanvas = document.getElementById('confetti-canvas');
+        const confettiCtx = confettiCanvas.getContext('2d');
+        let confettiParticles = [];
+        let confettiAnimId = null;
+
+        function resizeConfettiCanvas() {
+            confettiCanvas.width = window.innerWidth;
+            confettiCanvas.height = window.innerHeight;
+        }
+        resizeConfettiCanvas();
+
+        function startConfetti() {
+            const colors = ['#EF4444', '#FBBF24', '#3B82F6', '#10B981', '#EC4899', '#8B5CF6'];
+            confettiParticles = Array.from({ length: 110 }, () => ({
+                x: Math.random() * confettiCanvas.width,
+                y: Math.random() * confettiCanvas.height - confettiCanvas.height,
+                size: 6 + Math.random() * 7,
+                vy: 2 + Math.random() * 4,
+                vx: (Math.random() - 0.5) * 3,
+                color: colors[Math.floor(Math.random() * colors.length)],
+                rot: Math.random() * 360
+            }));
+
+            function renderConfetti() {
+                confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+                confettiParticles.forEach(p => {
+                    p.y += p.vy;
+                    p.x += p.vx;
+                    p.rot += 5;
+                    if (p.y > confettiCanvas.height) p.y = -10;
+
+                    confettiCtx.save();
+                    confettiCtx.translate(p.x, p.y);
+                    confettiCtx.rotate((p.rot * Math.PI) / 180);
+                    confettiCtx.fillStyle = p.color;
+                    confettiCtx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+                    confettiCtx.restore();
+                });
+                confettiAnimId = requestAnimationFrame(renderConfetti);
+            }
+            renderConfetti();
+        }
+
+        function stopConfetti() {
+            if (confettiAnimId) cancelAnimationFrame(confettiAnimId);
+            confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+        }
+
+        // Mulakan Enjin 3D Apabila Tetingkap Sedia
+        window.onload = function () {
+            document.getElementById('menu-high-score').textContent = gameState.highDistance;
+            initThreeJS();
+            animate();
+        };
+    </script>
+</body>
+</html>
